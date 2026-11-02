@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_adk_report_wizard_form" model="ir.ui.view">
+        <field name="name">adk.shop.report.wizard.form</field>
+        <field name="model">adk.shop.report.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Rapports boutiques">
+                <group>
+                    <group string="Rapport">
+                        <field name="report_type" widget="radio"/>
+                        <field name="company_id" groups="base.group_multi_company"/>
+                    </group>
+                    <group string="Période">
+                        <field name="date_from"/>
+                        <field name="date_to"/>
+                    </group>
+                </group>
+                <group string="Périmètre (vide = toutes les boutiques autorisées)">
+                    <field name="group_id"/>
+                    <field name="shop_ids" widget="many2many_tags"/>
+                    <field name="target_currency_id" groups="base.group_multi_currency"/>
+                </group>
+                <footer>
+                    <button name="action_print_pdf" string="Imprimer (PDF A4)" type="object" class="btn-primary" data-hotkey="q"/>
+                    <button name="action_export_xlsx" string="Exporter (Excel)" type="object"/>
+                    <button string="Fermer" special="cancel" data-hotkey="x"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_adk_report_wizard" model="ir.actions.act_window">
+        <field name="name">Rapports boutiques</field>
+        <field name="res_model">adk.shop.report.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+</odoo>

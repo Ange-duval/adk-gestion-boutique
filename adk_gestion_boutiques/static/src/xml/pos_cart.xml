@@ -1,0 +1,157 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="adk_gestion_boutiques.PosCart">
+        <div class="adk-pos">
+            <div class="adk-pos-loading" t-if="state.loading">Chargement de la caisse…</div>
+            <t t-else="">
+                <div class="adk-pos-top">
+                    <div class="adk-pos-title">
+                        <i class="fa fa-shopping-cart"/>
+                        <div>
+                            <b t-esc="state.data.shop.name"/>
+                            <span class="adk-pos-sub"><t t-esc="state.data.session.name"/> · caissier : <t t-esc="state.data.user"/></span>
+                        </div>
+                    </div>
+                    <div class="adk-pos-stats">
+                        <div><span>Ventes du jour</span><b><t t-esc="state.data.session.sales_count"/> · <t t-esc="money(state.data.session.sales_total)"/></b></div>
+                        <div><span>Espèces en caisse</span><b t-esc="money(state.data.session.live_cash)"/></div>
+                    </div>
+                    <div class="adk-pos-top-actions">
+                        <button type="button" class="adk-pos-btn warn" t-if="state.queue.length" t-on-click="sync" title="Ventes faites hors connexion, à synchroniser">
+                            <i t-attf-class="fa {{ state.syncing ? 'fa-refresh fa-spin' : 'fa-cloud-upload' }}"/> À synchroniser <span class="adk-pos-badge" t-esc="state.queue.length"/></button>
+                        <button type="button" t-attf-class="adk-pos-btn {{ pending.length ? 'info' : 'ghost' }}" t-on-click="() => state.showPending = !state.showPending">
+                            <i class="fa fa-clock-o"/> En attente <span class="adk-pos-badge" t-if="pending.length" t-esc="pending.length"/></button>
+                        <button type="button" class="adk-pos-btn ghost" t-on-click="leave"><i class="fa fa-arrow-left"/> Quitter</button>
+                        <button type="button" class="adk-pos-btn warn" t-on-click="closeDay"><i class="fa fa-lock"/> Clôturer la journée</button>
+                    </div>
+                </div>
+
+                <div class="adk-pos-body">
+                    <!-- ===== Catalogue ===== -->
+                    <div class="adk-pos-left">
+                        <div class="adk-pos-tools">
+                            <div class="adk-pos-search"><i class="fa fa-search"/>
+                                <input type="text" placeholder="Rechercher un article…" t-model="state.search"/>
+                            </div>
+                            <div class="adk-pos-cats">
+                                <button type="button" t-attf-class="adk-pos-cat {{ !state.categ ? 'on' : '' }}" t-on-click="() => state.categ = 0">Tout</button>
+                                <t t-foreach="state.data.categories" t-as="c" t-key="c.id">
+                                    <button type="button" t-attf-class="adk-pos-cat {{ state.categ === c.id ? 'on' : '' }}" t-on-click="() => state.categ = c.id"><t t-esc="c.name"/></button>
+                                </t>
+                            </div>
+                        </div>
+                        <div class="adk-pos-grid">
+                            <t t-foreach="products" t-as="p" t-key="p.id">
+                                <div t-attf-class="adk-pos-tile {{ qtyOf(p.id) ? 'sel' : '' }}" t-on-click="() => this.add(p)">
+                                    <span class="adk-pos-qty" t-if="qtyOf(p.id)"><t t-esc="qtyOf(p.id)"/></span>
+                                    <div class="adk-pos-img">
+                                        <img t-if="p.has_image" t-attf-src="/web/image/product.product/{{ p.id }}/image_256" t-att-alt="p.name" loading="lazy"/>
+                                        <div t-else="" class="ph"><t t-esc="initials(p.name)"/></div>
+                                    </div>
+                                    <div class="adk-pos-pname" t-esc="p.name"/>
+                                    <div class="adk-pos-pprice"><b t-esc="money(p.price)"/>
+                                        <span t-if="p.stock !== null" t-attf-class="adk-pos-stock {{ p.stock &lt;= 0 ? 'out' : (p.stock &lt; 5 ? 'low' : '') }}">Stock <t t-esc="p.stock"/></span>
+                                    </div>
+                                </div>
+                            </t>
+                            <div class="adk-pos-empty" t-if="!products.length">Aucun article trouvé.</div>
+                        </div>
+                    </div>
+
+                    <!-- ===== Panier ===== -->
+                    <div class="adk-pos-cart">
+                        <div class="adk-pos-cart-head">
+                            <b>Panier</b>
+                            <span class="adk-pos-count" t-if="itemCount"><t t-esc="itemCount"/> article(s)</span>
+                            <button type="button" class="adk-pos-link" t-if="state.cart.length" t-on-click="clearCart"><i class="fa fa-trash-o"/> Vider</button>
+                        </div>
+                        <div class="adk-pos-pending" t-if="state.showPending">
+                            <div class="adk-pos-empty" t-if="!pending.length">Aucune commande en attente.</div>
+                            <t t-foreach="pending" t-as="o" t-key="o.id">
+                                <div class="adk-pos-pend">
+                                    <div class="adk-pos-pend-info" t-on-click="() => this.loadPending(o)">
+                                        <b t-esc="o.name"/> <span t-esc="o.partner"/>
+                                        <div class="adk-pos-lunit"><t t-esc="o.lines.length"/> ligne(s)</div>
+                                    </div>
+                                    <b t-esc="money(o.total)"/>
+                                    <button type="button" class="adk-pos-x" t-on-click="() => this.cancelPending(o)" title="Annuler la commande"><i class="fa fa-times"/></button>
+                                </div>
+                            </t>
+                        </div>
+                        <div class="adk-pos-banner" t-if="state.orderId">
+                            <i class="fa fa-clock-o"/> Commande <b t-esc="state.orderName"/> en attente de paiement
+                        </div>
+                        <div class="adk-pos-lines">
+                            <div class="adk-pos-done" t-if="state.done and !state.cart.length">
+                                <i class="fa fa-check-circle"/>
+                                <div t-if="state.done.ordered"><b>Commande <t t-esc="state.done.name"/> enregistrée</b>
+                                    <div><t t-esc="money(state.done.total)"/> à payer — le client règle plus tard (bouton « En attente »)</div>
+                                </div>
+                                <div t-elif="state.done.offline"><b>Vente enregistrée hors connexion</b>
+                                    <div><t t-esc="money(state.done.total)"/> — synchronisation automatique dès le retour du réseau</div>
+                                </div>
+                                <div t-else=""><b>Vente <t t-esc="state.done.name"/> enregistrée</b>
+                                    <div><t t-esc="money(state.done.total)"/> encaissé<t t-if="state.done.change"> · monnaie rendue : <b t-esc="money(state.done.change)"/></t></div>
+                                </div>
+                            </div>
+                            <div class="adk-pos-empty" t-if="!state.cart.length and !state.done">
+                                <i class="fa fa-hand-pointer-o"/><br/>Touchez un article pour l'ajouter au panier.
+                            </div>
+                            <t t-foreach="cartLines" t-as="l" t-key="l.id">
+                                <div class="adk-pos-line">
+                                    <div class="adk-pos-lname"><t t-esc="l.p.name"/>
+                                        <div class="adk-pos-lunit"><t t-esc="money(l.p.price)"/> l'unité</div></div>
+                                    <div class="adk-pos-stepper">
+                                        <button type="button" class="adk-pos-step" t-on-click="() => this.minus(l)" title="Diminuer"><i class="fa fa-minus"/></button>
+                                        <span class="adk-pos-n" t-esc="l.qty"/>
+                                        <button type="button" class="adk-pos-step plus" t-on-click="() => this.plus(l)" title="Ajouter"><i class="fa fa-plus"/></button>
+                                    </div>
+                                    <div class="adk-pos-ltotal" t-esc="money(l.total)"/>
+                                    <button type="button" class="adk-pos-x" t-on-click="() => this.remove(l)" title="Retirer"><i class="fa fa-times"/></button>
+                                </div>
+                            </t>
+                        </div>
+
+                        <div class="adk-pos-pay">
+                            <div class="adk-pos-total"><span>TOTAL À PAYER</span><b t-esc="money(total)"/></div>
+                            <div class="adk-pos-label">Mode de paiement</div>
+                            <div class="adk-pos-journals">
+                                <t t-foreach="state.data.journals" t-as="j" t-key="j.id">
+                                    <button type="button" t-attf-class="adk-pos-j {{ state.journalId === j.id ? 'on' : '' }}" t-on-click="() => state.journalId = j.id">
+                                        <i t-attf-class="fa {{ j.type === 'cash' ? 'fa-money' : 'fa-credit-card' }}"/> <t t-esc="j.name"/>
+                                    </button>
+                                </t>
+                            </div>
+                            <t t-if="isCash and state.cart.length">
+                                <div class="adk-pos-label">Montant reçu</div>
+                                <input type="text" inputmode="numeric" class="adk-pos-input" placeholder="Montant remis par le client" t-model="state.tendered"/>
+                                <div class="adk-pos-quick">
+                                    <t t-foreach="quickAmounts" t-as="q" t-key="q">
+                                        <button type="button" t-on-click="() => this.setTendered(q)"><t t-esc="money(q)"/></button>
+                                    </t>
+                                </div>
+                                <div class="adk-pos-change" t-if="state.tendered !== ''">
+                                    <span>Monnaie à rendre</span><b t-esc="money(change)"/>
+                                </div>
+                            </t>
+                            <div class="adk-pos-label">Client (facultatif)</div>
+                            <select class="adk-pos-input" t-model.number="state.partnerId">
+                                <option value="0">Client de passage</option>
+                                <t t-foreach="state.data.partners" t-as="pa" t-key="pa.id">
+                                    <option t-att-value="pa.id"><t t-esc="pa.name"/></option>
+                                </t>
+                            </select>
+                            <div class="adk-pos-actions">
+                                <button type="button" class="adk-pos-btn info" t-att-disabled="!canOrder" t-on-click="() => this.order()">
+                                    <i class="fa fa-clipboard"/> <t t-esc="state.orderId ? 'Mettre à jour la commande' : 'Commander (payer plus tard)'"/></button>
+                                <button type="button" class="adk-pos-btn pay" t-att-disabled="!canPay" t-on-click="() => this.pay(false)">
+                                    <i class="fa fa-check"/> Encaisser <t t-if="total"><t t-esc="money(total)"/></t></button>
+                                <button type="button" class="adk-pos-btn ghost" t-att-disabled="!canPay" t-on-click="() => this.pay(true)"><i class="fa fa-print"/> Encaisser + ticket</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </t>
+        </div>
+    </t>
+</templates>

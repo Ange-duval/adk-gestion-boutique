@@ -1,0 +1,601 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_adk_shop_list" model="ir.ui.view">
+        <field name="name">adk.shop.list</field>
+        <field name="model">adk.shop</field>
+        <field name="arch" type="xml">
+            <list string="Boutiques">
+                <field name="code"/>
+                <field name="name"/>
+                <field name="group_id" optional="show"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+                <field name="city" optional="show"/>
+                <field name="manager_id" widget="many2one_avatar_user" optional="show"/>
+                <field name="fiscal_regime" optional="hide"/>
+                <field name="state" widget="badge"
+                       decoration-success="state == 'active'" decoration-info="state == 'draft'" decoration-danger="state == 'closed'"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_adk_shop_kanban" model="ir.ui.view">
+        <field name="name">adk.shop.kanban</field>
+        <field name="model">adk.shop</field>
+        <field name="arch" type="xml">
+            <kanban class="o_kanban_dashboard adk-kanban">
+                <field name="currency_id"/>
+                <field name="state"/>
+                <field name="sale_mode"/>
+                <field name="has_pos"/>
+                <field name="pos_open"/>
+                <field name="image_128"/>
+                <templates>
+                    <t t-name="card">
+                        <div class="adk-shop">
+                            <div class="adk-shop-head">
+                                <field name="image_128" widget="image" class="adk-logo"/>
+                                <div class="flex-grow-1">
+                                    <div class="adk-shop-name"><field name="name"/></div>
+                                    <div class="adk-shop-meta"><field name="code"/> · <field name="group_id"/></div>
+                                </div>
+                                <span t-if="record.alert_count.raw_value > 0" class="adk-badge warn"><i class="fa fa-bell" title="Alertes"/> <field name="alert_count"/></span>
+                                <span t-if="record.kpi_overdue_count.raw_value > 0" class="adk-badge bad"><i class="fa fa-exclamation-triangle" title="Retards"/> <field name="kpi_overdue_count"/></span>
+                                <span t-if="record.sale_mode.raw_value != 'simple' and record.pos_open.raw_value" class="adk-badge ok"><i class="fa fa-unlock" title="Caisse ouverte"/> Caisse ouverte</span>
+                                <span t-if="record.sale_mode.raw_value != 'simple' and !record.pos_open.raw_value and record.state.raw_value == 'active'" class="adk-badge off"><i class="fa fa-lock" title="Caisse fermée"/> Caisse fermée</span>
+                            </div>
+                            <div class="adk-shop-kpis">
+                                <div><span>CA du mois HT</span><b><field name="kpi_revenue"/></b></div>
+                                <div><span>Marge brute</span><b><field name="kpi_margin"/></b></div>
+                                <div><span>Résultat estimé</span><b><field name="kpi_result"/></b></div>
+                                <div><span>Stock</span><b><field name="kpi_stock_value"/></b></div>
+                                <div><span>Créances</span><b><field name="kpi_receivable"/></b></div>
+                                <div><span>Caisse</span><b><field name="cash_balance"/></b></div>
+                            </div>
+                            <div class="adk-shop-actions" t-if="record.state.raw_value == 'active'">
+                                <button name="action_view_shop" type="object" class="adk-btn"><i class="fa fa-folder-open"/> Ouvrir</button>
+                                <button name="action_new_sale" type="object" class="adk-btn-ghost" t-if="record.sale_mode.raw_value != 'pos'"><i class="fa fa-file-text-o"/> Vente simple</button>
+                                <button name="action_open_pos" type="object" class="adk-btn-ghost" t-if="record.sale_mode.raw_value != 'simple' and record.has_pos.raw_value"><i class="fa fa-shopping-cart"/> Vente POS</button>
+                            </div>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <record id="view_adk_shop_form" model="ir.ui.view">
+        <field name="name">adk.shop.form</field>
+        <field name="model">adk.shop</field>
+        <field name="arch" type="xml">
+            <form string="Boutique" class="adk-shop-form">
+                <header>
+                    <button name="action_new_sale" string="Vente simple" type="object" class="btn-primary"
+                            invisible="state != 'active' or sale_mode == 'pos'"/>
+                    <button name="action_open_pos" string="Vente POS" type="object" class="btn-primary"
+                            invisible="state != 'active' or sale_mode == 'simple' or not has_pos"/>
+                    <button name="action_close_session" string="Clôturer la journée" type="object"
+                            invisible="state != 'active' or not pos_open"/>
+                    <button name="action_new_purchase" string="Nouvel achat" type="object" invisible="state != 'active'"/>
+                    <button name="action_new_expense" string="Nouvelle dépense" type="object" invisible="state != 'active'"/>
+                    <button name="action_open_report" string="Rapports" type="object"/>
+                    <button name="action_activate" string="Activer" type="object" class="btn-primary" invisible="state == 'active'"/>
+                    <button name="action_close" string="Fermer la boutique" type="object" invisible="state != 'active'" confirm="Fermer définitivement cette boutique (elle ne sera plus proposée à la vente) ?"/>
+                    <button name="action_draft" string="Remettre en brouillon" type="object" invisible="state != 'closed'"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,active,closed"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_customers" type="object" class="oe_stat_button" icon="fa-users">
+                            <field name="customer_count" widget="statinfo" string="Clients"/>
+                        </button>
+                        <button name="action_view_suppliers" type="object" class="oe_stat_button" icon="fa-truck">
+                            <field name="supplier_count" widget="statinfo" string="Fournisseurs"/>
+                        </button>
+                        <button name="action_view_products" type="object" class="oe_stat_button" icon="fa-cube">
+                            <field name="product_count" widget="statinfo" string="Produits"/>
+                        </button>
+                        <button name="action_view_sessions" type="object" class="oe_stat_button" icon="fa-calendar-check-o" invisible="sale_mode == 'simple'">
+                            <field name="session_count" widget="statinfo" string="Journées de caisse"/>
+                        </button>
+                        <button name="action_view_alerts" type="object" class="oe_stat_button" icon="fa-bell">
+                            <field name="alert_count" widget="statinfo" string="Alertes"/>
+                        </button>
+                        <button name="action_view_children" type="object" class="oe_stat_button" icon="fa-sitemap" invisible="child_count == 0">
+                            <field name="child_count" widget="statinfo" string="Filiales"/>
+                        </button>
+                    </div>
+                    <widget name="web_ribbon" title="Archivée" bg_color="text-bg-danger" invisible="active"/>
+                    <field name="active" invisible="1"/>
+                    <field name="has_pos" invisible="1"/>
+                    <field name="pos_open" invisible="1"/>
+                    <field name="currency_id" invisible="1"/>
+                    <div class="adk-hero">
+                        <field name="image_1920" widget="image" class="adk-hero-logo" options="{'preview_image': 'image_128'}"/>
+                        <div class="adk-hero-main">
+                            <label for="name" class="adk-hero-label"/>
+                            <h1><field name="name" placeholder="Ex : BEN — Douala"/></h1>
+                            <div class="adk-hero-code"><i class="fa fa-tag"/> <field name="code" placeholder="Code unique (ex : BEN-DLA)"/></div>
+                        </div>
+                        <div class="adk-hero-period">
+                            <field name="kpi_period" widget="selection_badge" nolabel="1"/>
+                            <div class="adk-hero-dates"><i class="fa fa-calendar"/> <field name="kpi_label"/></div>
+                        </div>
+                    </div>
+                    <div class="adk-kpi-section">
+                        <div class="adk-kpi-title"><i class="fa fa-line-chart"/> Ventes et encaissements</div>
+                        <div class="adk-kpis">
+                            <div class="adk-kpi rev"><div class="adk-kpi-label">Chiffre d'affaires HT</div><field name="kpi_revenue"/></div>
+                            <div class="adk-kpi rev"><div class="adk-kpi-label">Marge brute estimée</div><field name="kpi_margin"/></div>
+                            <div class="adk-kpi rev"><div class="adk-kpi-label">Encaissé</div><field name="kpi_collected"/></div>
+                            <div class="adk-kpi rev"><div class="adk-kpi-label">Créances clients</div><field name="kpi_receivable"/></div>
+                            <div class="adk-kpi rev"><div class="adk-kpi-label">Commandes de vente</div><field name="kpi_sales_count"/></div>
+                        </div>
+                    </div>
+                    <div class="adk-kpi-section">
+                        <div class="adk-kpi-title"><i class="fa fa-credit-card"/> Charges et dettes</div>
+                        <div class="adk-kpis">
+                            <div class="adk-kpi chg"><div class="adk-kpi-label">Charges d'exploitation</div><field name="kpi_charges"/></div>
+                            <div class="adk-kpi chg"><div class="adk-kpi-label">Achats de marchandises</div><field name="kpi_goods_purchases"/></div>
+                            <div class="adk-kpi chg"><div class="adk-kpi-label">Décaissé</div><field name="kpi_paid_out"/></div>
+                            <div class="adk-kpi chg"><div class="adk-kpi-label">Dettes fournisseurs</div><field name="kpi_payable"/></div>
+                            <div class="adk-kpi chg"><div class="adk-kpi-label">Dépenses non facturées</div><field name="kpi_expenses_pending"/></div>
+                        </div>
+                    </div>
+                    <div class="adk-kpi-section">
+                        <div class="adk-kpi-title"><i class="fa fa-bar-chart"/> Résultat, stock et caisse</div>
+                        <div class="adk-kpis">
+                            <div class="adk-kpi res"><div class="adk-kpi-label">Résultat estimé</div><field name="kpi_result"/></div>
+                            <div class="adk-kpi res"><div class="adk-kpi-label">Valeur du stock</div><field name="kpi_stock_value"/></div>
+                            <div class="adk-kpi res"><div class="adk-kpi-label">Solde de caisse</div><field name="cash_balance"/></div>
+                            <div class="adk-kpi chg"><div class="adk-kpi-label">Factures en retard</div><field name="kpi_overdue_count"/></div>
+                        </div>
+                    </div>
+                    <notebook>
+                        <page string="Aperçu" name="overview">
+                            <h5 class="mt-2">Que voulez-vous faire ?</h5>
+                            <div class="d-flex flex-wrap gap-2 mb-3">
+                                <button name="action_new_sale" string="Vente simple" type="object" class="btn btn-primary" icon="fa-file-text-o" invisible="state != 'active' or sale_mode == 'pos'"/>
+                                <button name="action_open_pos" string="Vente POS" type="object" class="btn btn-primary" icon="fa-shopping-cart" invisible="state != 'active' or sale_mode == 'simple' or not has_pos"/>
+                                <button name="action_new_purchase" string="Acheter" type="object" class="btn btn-secondary" icon="fa-truck" invisible="state != 'active'"/>
+                                <button name="action_new_expense" string="Dépense" type="object" class="btn btn-secondary" icon="fa-money" invisible="state != 'active'"/>
+                                <button name="action_new_income" string="Autre revenu" type="object" class="btn btn-secondary" icon="fa-plus-circle" invisible="state != 'active'"/>
+                                <button name="action_new_transfer" string="Demander du stock" type="object" class="btn btn-secondary" icon="fa-exchange" invisible="state != 'active'"/>
+                                <button name="action_new_cash_move" string="Mouvement de caisse" type="object" class="btn btn-secondary" icon="fa-calculator" invisible="state != 'active'"/>
+                                <button name="action_open_report" string="Rapports" type="object" class="btn btn-secondary" icon="fa-print"/>
+                            </div>
+                            <h5>Alertes à traiter</h5>
+                            <field name="open_alert_ids" readonly="1">
+                                <list limit="10" no_open="1" create="0" delete="0" decoration-danger="severity == '2'" decoration-warning="severity == '1'">
+                                    <field name="date"/>
+                                    <field name="alert_type"/>
+                                    <field name="name"/>
+                                    <field name="severity" widget="badge"/>
+                                    <field name="state" column_invisible="1"/>
+                                    <button name="action_ack" type="object" icon="fa-eye" title="Prendre en compte" invisible="state != 'new'"/>
+                                    <button name="action_resolve" type="object" icon="fa-check" title="Marquer résolue"/>
+                                </list>
+                            </field>
+                        </page>
+                    <page string="Revenus" name="revenue">
+                        <notebook>
+                            <page string="Ventes" name="sales" groups="sales_team.group_sale_salesman">
+                                <div class="d-flex flex-wrap gap-2 mb-3">
+                                    <button name="action_new_sale" string="Vente simple" type="object" class="btn btn-primary" icon="fa-file-text-o" invisible="state != 'active' or sale_mode == 'pos'"/>
+                                    <button name="action_open_pos" string="Vente POS" type="object" class="btn btn-primary" icon="fa-shopping-cart" invisible="state != 'active' or sale_mode == 'simple' or not has_pos"/>
+                                    <button name="action_view_sales" string="Voir toutes les ventes" type="object" class="btn btn-secondary"/>
+                                </div>
+                            <field name="sale_order_ids" readonly="1">
+                                <list limit="10" no_open="1" create="0" delete="0">
+                                    <field name="name"/>
+                                    <field name="date_order"/>
+                                    <field name="partner_id"/>
+                                    <field name="amount_total" sum="Total"/>
+                                    <field name="currency_id" column_invisible="1"/>
+                                    <field name="invoice_status" widget="badge"/>
+                                    <field name="state" widget="badge"/>
+                                    <button name="action_adk_open_form" type="object" icon="fa-external-link" title="Ouvrir"/>
+                                </list>
+                            </field>
+                            </page>
+                            <page string="Factures clients" name="invoices" groups="account.group_account_invoice">
+                                <div class="d-flex flex-wrap gap-2 mb-3">
+                                    <button name="action_new_customer_invoice" string="Nouvelle facture" type="object" class="btn btn-primary" icon="fa-plus" invisible="state != 'active'"/>
+                                    <button name="action_view_invoices" string="Voir tout" type="object" class="btn btn-secondary"/>
+                                </div>
+                            <field name="invoice_ids" readonly="1">
+                                <list limit="10" no_open="1" create="0" delete="0">
+                                    <field name="name"/>
+                                    <field name="invoice_date"/>
+                                    <field name="partner_id"/>
+                                    <field name="amount_total_signed" sum="Total"/>
+                                    <field name="amount_residual_signed" sum="Reste"/>
+                                    <field name="payment_state" widget="badge"/>
+                                    <field name="state" widget="badge"/>
+                                    <button name="action_adk_open_form" type="object" icon="fa-external-link" title="Ouvrir"/>
+                                </list>
+                            </field>
+                            </page>
+                            <page string="Encaissements" name="payments_in" groups="account.group_account_invoice">
+                                <div class="d-flex flex-wrap gap-2 mb-3">
+                                    <button name="action_view_payments_in" string="Voir tout" type="object" class="btn btn-secondary"/>
+                                </div>
+                            <field name="payment_in_ids" readonly="1">
+                                <list limit="10" no_open="1" create="0" delete="0">
+                                    <field name="name"/>
+                                    <field name="date"/>
+                                    <field name="partner_id"/>
+                                    <field name="journal_id"/>
+                                    <field name="amount" sum="Total"/>
+                                    <field name="currency_id" column_invisible="1"/>
+                                    <field name="state" widget="badge"/>
+                                    <button name="action_adk_open_form" type="object" icon="fa-external-link" title="Ouvrir"/>
+                                </list>
+                            </field>
+                            </page>
+                            <page string="Autres revenus" name="incomes">
+                                <div class="d-flex flex-wrap gap-2 mb-3">
+                                    <button name="action_new_income" string="Nouveau revenu" type="object" class="btn btn-primary" icon="fa-plus" invisible="state != 'active'"/>
+                                    <button name="action_view_incomes" string="Voir tout" type="object" class="btn btn-secondary"/>
+                                </div>
+                            <field name="income_ids" readonly="1">
+                                <list limit="10" no_open="1" create="0" delete="0">
+                                    <field name="name"/>
+                                    <field name="date"/>
+                                    <field name="category_id"/>
+                                    <field name="description"/>
+                                    <field name="amount" sum="Total"/>
+                                    <field name="currency_id" column_invisible="1"/>
+                                    <field name="state" widget="badge"/>
+                                    <button name="action_adk_open_form" type="object" icon="fa-external-link" title="Ouvrir"/>
+                                </list>
+                            </field>
+                            </page>
+                            <page string="Clients" name="customers">
+                                <div class="d-flex flex-wrap gap-2 mb-3">
+                                    <button name="action_new_customer" string="Nouveau client" type="object" class="btn btn-primary" icon="fa-user-plus"/>
+                                    <button name="action_view_customers" string="Voir tout" type="object" class="btn btn-secondary"/>
+                                </div>
+                            <field name="customer_ids" readonly="1">
+                                <list limit="20" no_open="1" create="0" delete="0">
+                                    <field name="name"/>
+                                    <field name="phone"/>
+                                    <field name="email"/>
+                                    <button name="action_adk_open_form" type="object" icon="fa-external-link" title="Ouvrir"/>
+                                </list>
+                            </field>
+                            </page>
+                        </notebook>
+                    </page>
+                    <page string="Charges" name="charges">
+                        <notebook>
+                            <page string="Achats" name="purchases" groups="purchase.group_purchase_user">
+                                <div class="d-flex flex-wrap gap-2 mb-3">
+                                    <button name="action_new_purchase" string="Nouvel achat" type="object" class="btn btn-primary" icon="fa-plus" invisible="state != 'active'"/>
+                                    <button name="action_view_purchases" string="Voir tout" type="object" class="btn btn-secondary"/>
+                                </div>
+                            <field name="purchase_order_ids" readonly="1">
+                                <list limit="10" no_open="1" create="0" delete="0">
+                                    <field name="name"/>
+                                    <field name="date_order"/>
+                                    <field name="partner_id"/>
+                                    <field name="amount_total" sum="Total"/>
+                                    <field name="currency_id" column_invisible="1"/>
+                                    <field name="invoice_status" widget="badge"/>
+                                    <field name="state" widget="badge"/>
+                                    <button name="action_adk_open_form" type="object" icon="fa-external-link" title="Ouvrir"/>
+                                </list>
+                            </field>
+                            </page>
+                            <page string="Factures fournisseurs" name="bills" groups="account.group_account_invoice">
+                                <div class="d-flex flex-wrap gap-2 mb-3">
+                                    <button name="action_new_vendor_bill" string="Nouvelle facture" type="object" class="btn btn-primary" icon="fa-plus" invisible="state != 'active'"/>
+                                    <button name="action_view_bills" string="Voir tout" type="object" class="btn btn-secondary"/>
+                                </div>
+                            <field name="bill_ids" readonly="1">
+                                <list limit="10" no_open="1" create="0" delete="0">
+                                    <field name="name"/>
+                                    <field name="invoice_date"/>
+                                    <field name="partner_id"/>
+                                    <field name="amount_total_signed" sum="Total"/>
+                                    <field name="amount_residual_signed" sum="Reste"/>
+                                    <field name="payment_state" widget="badge"/>
+                                    <field name="state" widget="badge"/>
+                                    <button name="action_adk_open_form" type="object" icon="fa-external-link" title="Ouvrir"/>
+                                </list>
+                            </field>
+                            </page>
+                            <page string="Paiements fournisseurs" name="payments_out" groups="account.group_account_invoice">
+                                <div class="d-flex flex-wrap gap-2 mb-3">
+                                    <button name="action_view_payments_out" string="Voir tout" type="object" class="btn btn-secondary"/>
+                                </div>
+                            <field name="payment_out_ids" readonly="1">
+                                <list limit="10" no_open="1" create="0" delete="0">
+                                    <field name="name"/>
+                                    <field name="date"/>
+                                    <field name="partner_id"/>
+                                    <field name="journal_id"/>
+                                    <field name="amount" sum="Total"/>
+                                    <field name="currency_id" column_invisible="1"/>
+                                    <field name="state" widget="badge"/>
+                                    <button name="action_adk_open_form" type="object" icon="fa-external-link" title="Ouvrir"/>
+                                </list>
+                            </field>
+                            </page>
+                            <page string="Dépenses" name="expenses">
+                                <div class="d-flex flex-wrap gap-2 mb-3">
+                                    <button name="action_new_expense" string="Nouvelle dépense" type="object" class="btn btn-primary" icon="fa-plus" invisible="state != 'active'"/>
+                                    <button name="action_view_expenses" string="Voir tout" type="object" class="btn btn-secondary"/>
+                                </div>
+                            <field name="expense_ids" readonly="1">
+                                <list limit="10" no_open="1" create="0" delete="0">
+                                    <field name="name"/>
+                                    <field name="date"/>
+                                    <field name="category_id"/>
+                                    <field name="description"/>
+                                    <field name="amount" sum="Total"/>
+                                    <field name="currency_id" column_invisible="1"/>
+                                    <field name="state" widget="badge" decoration-info="state == 'submitted'" decoration-success="state in ('approved', 'billed')" decoration-danger="state == 'rejected'"/>
+                                    <button name="action_adk_open_form" type="object" icon="fa-external-link" title="Ouvrir"/>
+                                </list>
+                            </field>
+                            </page>
+                            <page string="Budgets" name="budgets">
+                                <div class="d-flex flex-wrap gap-2 mb-3">
+                                    <button name="action_new_budget" string="Nouveau budget" type="object" class="btn btn-primary" icon="fa-plus" invisible="state != 'active'"/>
+                                    <button name="action_view_budgets" string="Voir tout" type="object" class="btn btn-secondary"/>
+                                </div>
+                            <field name="budget_ids" readonly="1">
+                                <list limit="10" no_open="1" create="0" delete="0">
+                                    <field name="name"/>
+                                    <field name="date_from"/>
+                                    <field name="date_to"/>
+                                    <field name="total_planned"/>
+                                    <field name="total_spent"/>
+                                    <field name="currency_id" column_invisible="1"/>
+                                    <field name="percent" widget="progressbar"/>
+                                    <field name="state" widget="badge"/>
+                                    <button name="action_adk_open_form" type="object" icon="fa-external-link" title="Ouvrir"/>
+                                </list>
+                            </field>
+                            </page>
+                            <page string="Fournisseurs" name="suppliers">
+                                <div class="d-flex flex-wrap gap-2 mb-3">
+                                    <button name="action_new_supplier" string="Nouveau fournisseur" type="object" class="btn btn-primary" icon="fa-user-plus"/>
+                                    <button name="action_view_suppliers" string="Voir tout" type="object" class="btn btn-secondary"/>
+                                </div>
+                            <field name="supplier_ids" readonly="1">
+                                <list limit="20" no_open="1" create="0" delete="0">
+                                    <field name="name"/>
+                                    <field name="phone"/>
+                                    <field name="email"/>
+                                    <button name="action_adk_open_form" type="object" icon="fa-external-link" title="Ouvrir"/>
+                                </list>
+                            </field>
+                            </page>
+                        </notebook>
+                    </page>
+                    <page string="Produits &amp; stock" name="stock">
+                        <notebook>
+                            <page string="Produits" name="products">
+                                <div class="d-flex flex-wrap gap-2 mb-3">
+                                    <button name="action_new_product" string="Nouveau produit" type="object" class="btn btn-primary" icon="fa-plus"/>
+                                    <button name="action_view_products" string="Voir tout" type="object" class="btn btn-secondary"/>
+                                </div>
+                            <field name="product_tmpl_ids" readonly="1">
+                                <list limit="15" no_open="1" create="0" delete="0">
+                                    <field name="name"/>
+                                    <field name="default_code"/>
+                                    <field name="categ_id"/>
+                                    <field name="list_price"/>
+                                    <button name="action_adk_open_form" type="object" icon="fa-external-link" title="Ouvrir"/>
+                                </list>
+                            </field>
+                            </page>
+                            <page string="Stock actuel" name="quants" groups="stock.group_stock_user">
+                                <div class="d-flex flex-wrap gap-2 mb-3">
+                                    <button name="action_view_stock_moves" string="Mouvements détaillés" type="object" class="btn btn-secondary"/>
+                                </div>
+                            <field name="quant_ids" readonly="1">
+                                <list limit="15" no_open="1" create="0" delete="0">
+                                    <field name="product_id"/>
+                                    <field name="location_id"/>
+                                    <field name="quantity" sum="Total"/>
+                                    <field name="reserved_quantity"/>
+                                </list>
+                            </field>
+                            </page>
+                            <page string="Entrées et sorties" name="moves" groups="stock.group_stock_user">
+                                <div class="d-flex flex-wrap gap-2 mb-3">
+                                    <button name="action_view_stock_moves" string="Voir tout" type="object" class="btn btn-secondary"/>
+                                </div>
+                            <field name="stock_move_ids" readonly="1">
+                                <list limit="15" no_open="1" create="0" delete="0">
+                                    <field name="date"/>
+                                    <field name="reference"/>
+                                    <field name="product_id"/>
+                                    <field name="location_id"/>
+                                    <field name="location_dest_id"/>
+                                    <field name="quantity"/>
+                                    <field name="state" widget="badge"/>
+                                </list>
+                            </field>
+                            </page>
+                            <page string="Transferts" name="transfers">
+                                <div class="d-flex flex-wrap gap-2 mb-3">
+                                    <button name="action_new_transfer" string="Demander du stock" type="object" class="btn btn-primary" icon="fa-exchange" invisible="state != 'active'"/>
+                                    <button name="action_view_transfers" string="Voir tout" type="object" class="btn btn-secondary"/>
+                                </div>
+                            <h6>Reçus par la boutique</h6>
+                            <field name="transfer_in_ids" readonly="1">
+                                <list limit="10" no_open="1" create="0" delete="0">
+                                    <field name="name"/>
+                                    <field name="date_request"/>
+                                    <field name="shop_from_id"/>
+                                    <field name="shop_to_id"/>
+                                    <field name="state" widget="badge"/>
+                                    <button name="action_adk_open_form" type="object" icon="fa-external-link" title="Ouvrir"/>
+                                </list>
+                            </field>
+                            <h6>Envoyés par la boutique</h6>
+                            <field name="transfer_out_ids" readonly="1">
+                                <list limit="10" no_open="1" create="0" delete="0">
+                                    <field name="name"/>
+                                    <field name="date_request"/>
+                                    <field name="shop_from_id"/>
+                                    <field name="shop_to_id"/>
+                                    <field name="state" widget="badge"/>
+                                    <button name="action_adk_open_form" type="object" icon="fa-external-link" title="Ouvrir"/>
+                                </list>
+                            </field>
+                            </page>
+                            <page string="Réceptions et livraisons" name="pickings" groups="stock.group_stock_user">
+                                <div class="d-flex flex-wrap gap-2 mb-3">
+                                    <button name="action_view_pickings" string="Voir tout" type="object" class="btn btn-secondary"/>
+                                </div>
+                            <field name="picking_ids" readonly="1">
+                                <list limit="10" no_open="1" create="0" delete="0">
+                                    <field name="name"/>
+                                    <field name="scheduled_date"/>
+                                    <field name="partner_id"/>
+                                    <field name="origin"/>
+                                    <field name="state" widget="badge"/>
+                                    <button name="action_adk_open_form" type="object" icon="fa-external-link" title="Ouvrir"/>
+                                </list>
+                            </field>
+                            </page>
+                        </notebook>
+                    </page>
+                        <page string="Caisse" name="cash">
+                            <div class="d-flex flex-wrap gap-2 mb-3">
+                                <button name="action_new_cash_move" string="Nouveau mouvement / comptage" type="object" class="btn btn-primary" icon="fa-plus" invisible="state != 'active'"/>
+                                <button name="action_view_cash_moves" string="Voir tout" type="object" class="btn btn-secondary"/>
+                            </div>
+                            <field name="cash_move_ids" readonly="1">
+                                <list limit="15" no_open="1" create="0" delete="0" decoration-danger="difference != 0">
+                                    <field name="name"/>
+                                    <field name="date"/>
+                                    <field name="kind"/>
+                                    <field name="reason"/>
+                                    <field name="amount"/>
+                                    <field name="difference" optional="show"/>
+                                    <field name="balance_after"/>
+                                    <field name="currency_id" column_invisible="1"/>
+                                    <field name="user_id" widget="many2one_avatar_user"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Équipe" name="team">
+                            <group>
+                                <group>
+                                    <field name="manager_id" widget="many2one_avatar_user"/>
+                                    <field name="group_id"/>
+                                </group>
+                                <group>
+                                    <field name="expense_auto_approve_limit"/>
+                                </group>
+                            </group>
+                            <field name="user_ids" widget="many2many_avatar_user"/>
+                        </page>
+                        <page string="Paramètres" name="settings">
+                            <notebook>
+                                <page string="Identité" name="identity">
+                                    <group>
+                                        <group string="Activité">
+                                            <field name="activity_type"/>
+                                            <field name="sector"/>
+                                        </group>
+                                        <group string="Coordonnées">
+                                            <field name="street" placeholder="Rue…"/>
+                                            <field name="street2"/>
+                                            <field name="city"/>
+                                            <field name="state_id"/>
+                                            <field name="zip"/>
+                                            <field name="country_id"/>
+                                            <field name="phone" widget="phone"/>
+                                            <field name="email" widget="email"/>
+                                            <field name="website" widget="url"/>
+                                        </group>
+                                    </group>
+                                    <field name="description" placeholder="Présentation de la boutique…"/>
+                                </page>
+                                <page string="Société &amp; fiscalité" name="fiscal">
+                                    <group>
+                                        <group string="Rattachement">
+                                            <field name="company_id" groups="base.group_multi_company"/>
+                                            <field name="warehouse_id"/>
+                                        </group>
+                                        <group string="Régime fiscal">
+                                            <field name="fiscal_regime"/>
+                                            <field name="tax_id_number"/>
+                                            <field name="trade_register"/>
+                                        </group>
+                                    </group>
+                                    <group>
+                                        <group string="Taxes de vente">
+                                            <field name="sale_tax_ids" widget="many2many_tags" nolabel="1"/>
+                                        </group>
+                                        <group string="Taxes d'achat">
+                                            <field name="purchase_tax_ids" widget="many2many_tags" nolabel="1"/>
+                                        </group>
+                                    </group>
+                                </page>
+                                <page string="Vente" name="sale_settings">
+                                    <group name="sale_settings_group">
+                                        <group string="Modes de vente" name="sale_modes">
+                                            <field name="sale_mode" widget="radio"/>
+                                        </group>
+                                    </group>
+                                </page>
+                                <page string="Organisation" name="organisation">
+                                    <group>
+                                        <group>
+                                            <field name="parent_id"/>
+                                            <field name="is_subsidiary" invisible="not parent_id"/>
+                                        </group>
+                                        <group>
+                                            <field name="tag_id" readonly="1"/>
+                                        </group>
+                                    </group>
+                                </page>
+                            </notebook>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_adk_shop_search" model="ir.ui.view">
+        <field name="name">adk.shop.search</field>
+        <field name="model">adk.shop</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name" string="Boutique" filter_domain="['|', ('name', 'ilike', self), ('code', 'ilike', self)]"/>
+                <field name="group_id"/>
+                <field name="manager_id"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+                <filter string="Actives" name="active_state" domain="[('state', '=', 'active')]"/>
+                <filter string="Brouillons" name="draft_state" domain="[('state', '=', 'draft')]"/>
+                <filter string="Clôturées" name="closed_state" domain="[('state', '=', 'closed')]"/>
+                <filter string="Archivées" name="inactive" domain="[('active', '=', False)]"/>
+                <group expand="0" string="Regrouper par">
+                    <filter string="Groupe" name="group_by_group" context="{'group_by': 'group_id'}"/>
+                    <filter string="Société" name="group_by_company" context="{'group_by': 'company_id'}" groups="base.group_multi_company"/>
+                    <filter string="Régime fiscal" name="group_by_regime" context="{'group_by': 'fiscal_regime'}"/>
+                    <filter string="État" name="group_by_state" context="{'group_by': 'state'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_adk_shop" model="ir.actions.act_window">
+        <field name="name">Boutiques</field>
+        <field name="res_model">adk.shop</field>
+        <field name="view_mode">kanban,list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Créez votre première boutique</p>
+            <p>Renseignez son identité, sa société, son régime fiscal et son équipe. Elle disposera de son propre périmètre de clients, fournisseurs et produits.</p>
+        </field>
+    </record>
+</odoo>

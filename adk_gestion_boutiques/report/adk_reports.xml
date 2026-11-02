@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="paperformat_adk_landscape" model="report.paperformat">
+        <field name="name">ADK A4 paysage</field>
+        <field name="default" eval="False"/>
+        <field name="format">A4</field>
+        <field name="orientation">Landscape</field>
+        <field name="margin_top">10</field>
+        <field name="margin_bottom">12</field>
+        <field name="margin_left">10</field>
+        <field name="margin_right">10</field>
+        <field name="header_line" eval="False"/>
+        <field name="header_spacing">0</field>
+        <field name="dpi">90</field>
+    </record>
+
+    <record id="action_report_adk_shops" model="ir.actions.report">
+        <field name="name">Rapport boutiques</field>
+        <field name="model">adk.shop.report.wizard</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">adk_gestion_boutiques.report_adk_shops</field>
+        <field name="report_file">adk_gestion_boutiques.report_adk_shops</field>
+        <field name="print_report_name">'Rapport_ADK_%s' % object.report_type</field>
+        <field name="paperformat_id" ref="paperformat_adk_landscape"/>
+    </record>
+
+    <template id="report_adk_shops">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="o">
+                <t t-call="web.basic_layout">
+                    <t t-set="data" t-value="o.get_report_data()"/>
+                    <t t-set="company" t-value="o.company_id"/>
+                    <div class="page" style="font-size:12px;color:#1f2937">
+                        <table style="width:100%;border-bottom:3px solid #1F3A8A;margin-bottom:14px">
+                            <tr>
+                                <td style="width:60%;vertical-align:middle;padding-bottom:8px">
+                                    <img t-if="company.logo" t-att-src="image_data_uri(company.logo)" style="max-height:56px;max-width:180px;margin-right:12px;vertical-align:middle" alt=""/>
+                                    <span style="font-size:18px;font-weight:bold;color:#1F3A8A" t-out="company.name"/>
+                                    <div style="color:#6b7280;font-size:11px">
+                                        <span t-if="company.street" t-out="company.street"/><span t-if="company.city">, <t t-out="company.city"/></span>
+                                        <span t-if="company.phone"> · <t t-out="company.phone"/></span>
+                                    </div>
+                                </td>
+                                <td style="text-align:right;vertical-align:middle;padding-bottom:8px">
+                                    <div style="font-size:22px;font-weight:bold;color:#1F3A8A" t-out="data['title']"/>
+                                    <div style="color:#6b7280" t-out="o._filters_text()"/>
+                                    <div style="color:#6b7280">Généré le <span t-out="o.generated_on" t-options="{'widget': 'datetime'}"/></div>
+                                </td>
+                            </tr>
+                        </table>
+                        <table style="width:100%;border-collapse:collapse;font-size:11px">
+                            <thead>
+                                <tr style="background:#1F3A8A;color:#fff">
+                                    <th t-foreach="data['columns']" t-as="col" t-att-style="'padding:6px 5px;border:1px solid #1F3A8A;text-align:' + ('right' if data['num_cols'][col_index] else 'left')" t-out="col"/>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr t-foreach="data['display_rows']" t-as="row" t-att-style="'background:#f3f4f6' if row_index % 2 else ''">
+                                    <td t-foreach="row" t-as="cell" t-att-style="'padding:5px;border-bottom:1px solid #e5e7eb;white-space:nowrap;text-align:' + ('right' if cell[1] else 'left')" t-out="cell[0]"/>
+                                </tr>
+                            </tbody>
+                            <tfoot t-if="data['display_totals']">
+                                <tr style="background:#eef2ff;font-weight:bold">
+                                    <td t-foreach="data['display_totals']" t-as="cell" t-att-style="'padding:6px 5px;border-top:2px solid #1F3A8A;white-space:nowrap;text-align:' + ('right' if cell[1] else 'left')" t-out="cell[0]"/>
+                                </tr>
+                            </tfoot>
+                        </table>
+                        <p t-if="not data['rows']" style="color:#6b7280;margin-top:12px">Aucune donnée pour ces filtres.</p>
+                        <div style="margin-top:14px;font-size:10px;color:#6b7280;border-top:1px solid #e5e7eb;padding-top:6px">
+                            <div t-foreach="data['notes']" t-as="note" t-out="note"/>
+                        </div>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+</odoo>

@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_adk_shop_group_list" model="ir.ui.view">
+        <field name="name">adk.shop.group.list</field>
+        <field name="model">adk.shop.group</field>
+        <field name="arch" type="xml">
+            <list string="Groupes de boutiques">
+                <field name="complete_name"/>
+                <field name="code"/>
+                <field name="manager_id" widget="many2one_avatar_user"/>
+                <field name="shop_count"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_adk_shop_group_form" model="ir.ui.view">
+        <field name="name">adk.shop.group.form</field>
+        <field name="model">adk.shop.group</field>
+        <field name="arch" type="xml">
+            <form string="Groupe de boutiques">
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_shops" type="object" class="oe_stat_button" icon="fa-shopping-bag">
+                            <field name="shop_count" widget="statinfo" string="Boutiques"/>
+                        </button>
+                    </div>
+                    <widget name="web_ribbon" title="Archivé" bg_color="text-bg-danger" invisible="active"/>
+                    <field name="active" invisible="1"/>
+                    <div class="oe_title">
+                        <label for="name"/>
+                        <h1><field name="name" placeholder="Ex : Région Littoral"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="code"/>
+                            <field name="parent_id"/>
+                        </group>
+                        <group>
+                            <field name="manager_id" widget="many2one_avatar_user"/>
+                            <field name="color" widget="color_picker"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Boutiques" name="shops">
+                            <field name="shop_ids" readonly="1">
+                                <list>
+                                    <field name="code"/>
+                                    <field name="name"/>
+                                    <field name="company_id"/>
+                                    <field name="state"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Notes" name="notes"><field name="note"/></page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_adk_shop_group_search" model="ir.ui.view">
+        <field name="name">adk.shop.group.search</field>
+        <field name="model">adk.shop.group</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name" string="Groupe" filter_domain="['|', ('name', 'ilike', self), ('code', 'ilike', self)]"/>
+                <field name="manager_id"/>
+                <filter string="Archivés" name="inactive" domain="[('active', '=', False)]"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_adk_shop_group" model="ir.actions.act_window">
+        <field name="name">Groupes de boutiques</field>
+        <field name="res_model">adk.shop.group</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Créez votre premier groupe de boutiques</p>
+            <p>Regroupez vos boutiques par région, réseau ou activité pour les piloter et les comparer.</p>
+        </field>
+    </record>
+</odoo>

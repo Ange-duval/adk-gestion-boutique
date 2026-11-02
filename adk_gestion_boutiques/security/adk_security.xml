@@ -1,0 +1,231 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="module_category_adk" model="ir.module.category">
+        <field name="name">ADK Gestion Boutiques</field>
+        <field name="sequence">50</field>
+    </record>
+    <record id="group_adk_user" model="res.groups">
+        <field name="name">Utilisateur boutique</field>
+        <field name="category_id" ref="module_category_adk"/>
+        <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
+    </record>
+    <record id="group_adk_manager" model="res.groups">
+        <field name="name">Responsable de boutique</field>
+        <field name="category_id" ref="module_category_adk"/>
+        <field name="implied_ids" eval="[(4, ref('group_adk_user'))]"/>
+    </record>
+    <record id="group_adk_director" model="res.groups">
+        <field name="name">Direction générale</field>
+        <field name="category_id" ref="module_category_adk"/>
+        <field name="implied_ids" eval="[(4, ref('group_adk_manager'))]"/>
+        <field name="users" eval="[(4, ref('base.user_root')), (4, ref('base.user_admin'))]"/>
+    </record>
+    <record id="group_adk_restricted" model="res.groups">
+        <field name="name">Cloisonné à ses boutiques (documents)</field>
+        <field name="category_id" ref="module_category_adk"/>
+        <field name="comment">Limite l'accès aux ventes, achats, factures, paiements, mouvements de stock, clients, fournisseurs et produits rattachés aux seules boutiques de l'utilisateur. Les fiches sans boutique restent visibles. À ne pas cumuler avec le rôle Direction générale.</field>
+    </record>
+
+    <record id="rule_adk_shop_company" model="ir.rule">
+        <field name="name">Boutique : multi-sociétés</field>
+        <field name="model_id" ref="model_adk_shop"/>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="rule_adk_shop_user" model="ir.rule">
+        <field name="name">Boutique : mes boutiques</field>
+        <field name="model_id" ref="model_adk_shop"/>
+        <field name="groups" eval="[(4, ref('group_adk_user'))]"/>
+        <field name="domain_force">['|', '|', ('user_ids', 'in', [user.id]), ('manager_id', '=', user.id), ('group_id.manager_id', '=', user.id)]</field>
+    </record>
+    <record id="rule_adk_shop_director" model="ir.rule">
+        <field name="name">Boutique : direction (toutes)</field>
+        <field name="model_id" ref="model_adk_shop"/>
+        <field name="groups" eval="[(4, ref('group_adk_director'))]"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+    </record>
+    <record id="rule_adk_expense_company" model="ir.rule">
+        <field name="name">Dépense : multi-sociétés</field>
+        <field name="model_id" ref="model_adk_shop_expense"/>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="rule_adk_expense_user" model="ir.rule">
+        <field name="name">Dépense : mes boutiques</field>
+        <field name="model_id" ref="model_adk_shop_expense"/>
+        <field name="groups" eval="[(4, ref('group_adk_user'))]"/>
+        <field name="domain_force">['|', '|', ('shop_id.user_ids', 'in', [user.id]), ('shop_id.manager_id', '=', user.id), ('shop_id.group_id.manager_id', '=', user.id)]</field>
+    </record>
+    <record id="rule_adk_expense_director" model="ir.rule">
+        <field name="name">Dépense : direction (toutes)</field>
+        <field name="model_id" ref="model_adk_shop_expense"/>
+        <field name="groups" eval="[(4, ref('group_adk_director'))]"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+    </record>
+    <record id="rule_adk_income_company" model="ir.rule">
+        <field name="name">Autre revenu : multi-sociétés</field>
+        <field name="model_id" ref="model_adk_shop_income"/>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="rule_adk_income_user" model="ir.rule">
+        <field name="name">Autre revenu : mes boutiques</field>
+        <field name="model_id" ref="model_adk_shop_income"/>
+        <field name="groups" eval="[(4, ref('group_adk_user'))]"/>
+        <field name="domain_force">['|', '|', ('shop_id.user_ids', 'in', [user.id]), ('shop_id.manager_id', '=', user.id), ('shop_id.group_id.manager_id', '=', user.id)]</field>
+    </record>
+    <record id="rule_adk_income_director" model="ir.rule">
+        <field name="name">Autre revenu : direction (toutes)</field>
+        <field name="model_id" ref="model_adk_shop_income"/>
+        <field name="groups" eval="[(4, ref('group_adk_director'))]"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+    </record>
+    <record id="rule_adk_budget_company" model="ir.rule">
+        <field name="name">Budget : multi-sociétés</field>
+        <field name="model_id" ref="model_adk_shop_budget"/>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="rule_adk_budget_user" model="ir.rule">
+        <field name="name">Budget : mes boutiques</field>
+        <field name="model_id" ref="model_adk_shop_budget"/>
+        <field name="groups" eval="[(4, ref('group_adk_user'))]"/>
+        <field name="domain_force">['|', '|', ('shop_id.user_ids', 'in', [user.id]), ('shop_id.manager_id', '=', user.id), ('shop_id.group_id.manager_id', '=', user.id)]</field>
+    </record>
+    <record id="rule_adk_budget_director" model="ir.rule">
+        <field name="name">Budget : direction (toutes)</field>
+        <field name="model_id" ref="model_adk_shop_budget"/>
+        <field name="groups" eval="[(4, ref('group_adk_director'))]"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+    </record>
+    <record id="rule_adk_alert_company" model="ir.rule">
+        <field name="name">Alerte : multi-sociétés</field>
+        <field name="model_id" ref="model_adk_shop_alert"/>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="rule_adk_alert_user" model="ir.rule">
+        <field name="name">Alerte : mes boutiques</field>
+        <field name="model_id" ref="model_adk_shop_alert"/>
+        <field name="groups" eval="[(4, ref('group_adk_user'))]"/>
+        <field name="domain_force">['|', '|', ('shop_id.user_ids', 'in', [user.id]), ('shop_id.manager_id', '=', user.id), ('shop_id.group_id.manager_id', '=', user.id)]</field>
+    </record>
+    <record id="rule_adk_alert_director" model="ir.rule">
+        <field name="name">Alerte : direction (toutes)</field>
+        <field name="model_id" ref="model_adk_shop_alert"/>
+        <field name="groups" eval="[(4, ref('group_adk_director'))]"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+    </record>
+    <record id="rule_adk_cash_move_company" model="ir.rule">
+        <field name="name">Mouvement de caisse : multi-sociétés</field>
+        <field name="model_id" ref="model_adk_shop_cash_move"/>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="rule_adk_cash_move_user" model="ir.rule">
+        <field name="name">Mouvement de caisse : mes boutiques</field>
+        <field name="model_id" ref="model_adk_shop_cash_move"/>
+        <field name="groups" eval="[(4, ref('group_adk_user'))]"/>
+        <field name="domain_force">['|', '|', ('shop_id.user_ids', 'in', [user.id]), ('shop_id.manager_id', '=', user.id), ('shop_id.group_id.manager_id', '=', user.id)]</field>
+    </record>
+    <record id="rule_adk_cash_move_director" model="ir.rule">
+        <field name="name">Mouvement de caisse : direction (toutes)</field>
+        <field name="model_id" ref="model_adk_shop_cash_move"/>
+        <field name="groups" eval="[(4, ref('group_adk_director'))]"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+    </record>
+    <record id="rule_adk_budget_line_user" model="ir.rule">
+        <field name="name">Ligne de budget : mes boutiques</field>
+        <field name="model_id" ref="model_adk_shop_budget_line"/>
+        <field name="groups" eval="[(4, ref('group_adk_user'))]"/>
+        <field name="domain_force">['|', '|', ('budget_id.shop_id.user_ids', 'in', [user.id]), ('budget_id.shop_id.manager_id', '=', user.id), ('budget_id.shop_id.group_id.manager_id', '=', user.id)]</field>
+    </record>
+    <record id="rule_adk_budget_line_director" model="ir.rule">
+        <field name="name">Ligne de budget : direction</field>
+        <field name="model_id" ref="model_adk_shop_budget_line"/>
+        <field name="groups" eval="[(4, ref('group_adk_director'))]"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+    </record>
+    <record id="rule_adk_transfer_company" model="ir.rule">
+        <field name="name">Transfert : multi-sociétés</field>
+        <field name="model_id" ref="model_adk_shop_transfer"/>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="rule_adk_transfer_user" model="ir.rule">
+        <field name="name">Transfert : mes boutiques</field>
+        <field name="model_id" ref="model_adk_shop_transfer"/>
+        <field name="groups" eval="[(4, ref('group_adk_user'))]"/>
+        <field name="domain_force">['|', '|', '|', '|', '|', ('shop_from_id.user_ids', 'in', [user.id]), ('shop_from_id.manager_id', '=', user.id), ('shop_from_id.group_id.manager_id', '=', user.id), ('shop_to_id.user_ids', 'in', [user.id]), ('shop_to_id.manager_id', '=', user.id), ('shop_to_id.group_id.manager_id', '=', user.id)]</field>
+    </record>
+    <record id="rule_adk_transfer_director" model="ir.rule">
+        <field name="name">Transfert : direction</field>
+        <field name="model_id" ref="model_adk_shop_transfer"/>
+        <field name="groups" eval="[(4, ref('group_adk_director'))]"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+    </record>
+    <record id="rule_adk_transfer_line_user" model="ir.rule">
+        <field name="name">Ligne de transfert : mes boutiques</field>
+        <field name="model_id" ref="model_adk_shop_transfer_line"/>
+        <field name="groups" eval="[(4, ref('group_adk_user'))]"/>
+        <field name="domain_force">['|', '|', '|', '|', '|', ('transfer_id.shop_from_id.user_ids', 'in', [user.id]), ('transfer_id.shop_from_id.manager_id', '=', user.id), ('transfer_id.shop_from_id.group_id.manager_id', '=', user.id), ('transfer_id.shop_to_id.user_ids', 'in', [user.id]), ('transfer_id.shop_to_id.manager_id', '=', user.id), ('transfer_id.shop_to_id.group_id.manager_id', '=', user.id)]</field>
+    </record>
+    <record id="rule_adk_transfer_line_director" model="ir.rule">
+        <field name="name">Ligne de transfert : direction</field>
+        <field name="model_id" ref="model_adk_shop_transfer_line"/>
+        <field name="groups" eval="[(4, ref('group_adk_director'))]"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+    </record>
+    <record id="rule_adk_sale_restricted" model="ir.rule">
+        <field name="name">ADK sale : cloisonné par boutique</field>
+        <field name="model_id" ref="sale.model_sale_order"/>
+        <field name="groups" eval="[(4, ref('group_adk_restricted'))]"/>
+        <field name="domain_force">['|', '|', '|', ('adk_shop_id', '=', False), ('adk_shop_id.user_ids', 'in', [user.id]), ('adk_shop_id.manager_id', '=', user.id), ('adk_shop_id.group_id.manager_id', '=', user.id)]</field>
+    </record>
+    <record id="rule_adk_purchase_restricted" model="ir.rule">
+        <field name="name">ADK purchase : cloisonné par boutique</field>
+        <field name="model_id" ref="purchase.model_purchase_order"/>
+        <field name="groups" eval="[(4, ref('group_adk_restricted'))]"/>
+        <field name="domain_force">['|', '|', '|', ('adk_shop_id', '=', False), ('adk_shop_id.user_ids', 'in', [user.id]), ('adk_shop_id.manager_id', '=', user.id), ('adk_shop_id.group_id.manager_id', '=', user.id)]</field>
+    </record>
+    <record id="rule_adk_move_restricted" model="ir.rule">
+        <field name="name">ADK move : cloisonné par boutique</field>
+        <field name="model_id" ref="account.model_account_move"/>
+        <field name="groups" eval="[(4, ref('group_adk_restricted'))]"/>
+        <field name="domain_force">['|', '|', '|', ('adk_shop_id', '=', False), ('adk_shop_id.user_ids', 'in', [user.id]), ('adk_shop_id.manager_id', '=', user.id), ('adk_shop_id.group_id.manager_id', '=', user.id)]</field>
+    </record>
+    <record id="rule_adk_payment_restricted" model="ir.rule">
+        <field name="name">ADK payment : cloisonné par boutique</field>
+        <field name="model_id" ref="account.model_account_payment"/>
+        <field name="groups" eval="[(4, ref('group_adk_restricted'))]"/>
+        <field name="domain_force">['|', '|', '|', ('adk_shop_id', '=', False), ('adk_shop_id.user_ids', 'in', [user.id]), ('adk_shop_id.manager_id', '=', user.id), ('adk_shop_id.group_id.manager_id', '=', user.id)]</field>
+    </record>
+    <record id="rule_adk_picking_restricted" model="ir.rule">
+        <field name="name">ADK picking : cloisonné par boutique</field>
+        <field name="model_id" ref="stock.model_stock_picking"/>
+        <field name="groups" eval="[(4, ref('group_adk_restricted'))]"/>
+        <field name="domain_force">['|', '|', '|', ('adk_shop_id', '=', False), ('adk_shop_id.user_ids', 'in', [user.id]), ('adk_shop_id.manager_id', '=', user.id), ('adk_shop_id.group_id.manager_id', '=', user.id)]</field>
+    </record>
+    <record id="rule_adk_partner_restricted" model="ir.rule">
+        <field name="name">ADK partner : cloisonné par boutique</field>
+        <field name="model_id" ref="base.model_res_partner"/>
+        <field name="groups" eval="[(4, ref('group_adk_restricted'))]"/>
+        <field name="domain_force">['|', '|', '|', ('adk_shop_ids', '=', False), ('adk_shop_ids.user_ids', 'in', [user.id]), ('adk_shop_ids.manager_id', '=', user.id), ('adk_shop_ids.group_id.manager_id', '=', user.id)]</field>
+    </record>
+    <record id="rule_adk_product_restricted" model="ir.rule">
+        <field name="name">ADK product : cloisonné par boutique</field>
+        <field name="model_id" ref="product.model_product_template"/>
+        <field name="groups" eval="[(4, ref('group_adk_restricted'))]"/>
+        <field name="domain_force">['|', '|', '|', ('adk_shop_ids', '=', False), ('adk_shop_ids.user_ids', 'in', [user.id]), ('adk_shop_ids.manager_id', '=', user.id), ('adk_shop_ids.group_id.manager_id', '=', user.id)]</field>
+    </record>
+    <record id="rule_adk_session_company" model="ir.rule">
+        <field name="name">Journée de caisse : multi-sociétés</field>
+        <field name="model_id" ref="model_adk_shop_session"/>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="rule_adk_session_user" model="ir.rule">
+        <field name="name">Journée de caisse : mes boutiques</field>
+        <field name="model_id" ref="model_adk_shop_session"/>
+        <field name="groups" eval="[(4, ref('group_adk_user'))]"/>
+        <field name="domain_force">['|', '|', ('shop_id.user_ids', 'in', [user.id]), ('shop_id.manager_id', '=', user.id), ('shop_id.group_id.manager_id', '=', user.id)]</field>
+    </record>
+    <record id="rule_adk_session_director" model="ir.rule">
+        <field name="name">Journée de caisse : direction (toutes)</field>
+        <field name="model_id" ref="model_adk_shop_session"/>
+        <field name="groups" eval="[(4, ref('group_adk_director'))]"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+    </record>
+</odoo>

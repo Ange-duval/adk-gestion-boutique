@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_order_form_adk" model="ir.ui.view">
+        <field name="name">sale.order.form.adk</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='partner_id']" position="after">
+                <field name="adk_shop_id" options="{'no_create': True}"/>
+            </xpath>
+        </field>
+    </record>
+    <record id="view_sales_order_filter_adk" model="ir.ui.view">
+        <field name="name">sale.order.search.adk</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_sales_order_filter"/>
+        <field name="arch" type="xml">
+            <xpath expr="//search" position="inside">
+                <field name="adk_shop_id"/>
+                <filter string="Par boutique" name="adk_group_shop" context="{'group_by': 'adk_shop_id'}"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="purchase_order_form_adk" model="ir.ui.view">
+        <field name="name">purchase.order.form.adk</field>
+        <field name="model">purchase.order</field>
+        <field name="inherit_id" ref="purchase.purchase_order_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='partner_id']" position="after">
+                <field name="adk_shop_id" options="{'no_create': True}"/>
+            </xpath>
+        </field>
+    </record>
+    <record id="view_purchase_order_filter_adk" model="ir.ui.view">
+        <field name="name">purchase.order.search.adk</field>
+        <field name="model">purchase.order</field>
+        <field name="inherit_id" ref="purchase.view_purchase_order_filter"/>
+        <field name="arch" type="xml">
+            <xpath expr="//search" position="inside">
+                <field name="adk_shop_id"/>
+                <filter string="Par boutique" name="adk_group_shop" context="{'group_by': 'adk_shop_id'}"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_move_form_adk" model="ir.ui.view">
+        <field name="name">account.move.form.adk</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_move_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='partner_id']" position="after">
+                <field name="adk_shop_id" options="{'no_create': True}"
+                       invisible="move_type not in ('out_invoice', 'out_refund', 'in_invoice', 'in_refund', 'out_receipt', 'in_receipt')"/>
+            </xpath>
+        </field>
+    </record>
+    <record id="view_account_invoice_filter_adk" model="ir.ui.view">
+        <field name="name">account.move.search.adk</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_account_invoice_filter"/>
+        <field name="arch" type="xml">
+            <xpath expr="//search" position="inside">
+                <field name="adk_shop_id"/>
+                <filter string="Par boutique" name="adk_group_shop" context="{'group_by': 'adk_shop_id'}"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_picking_form_adk" model="ir.ui.view">
+        <field name="name">stock.picking.form.adk</field>
+        <field name="model">stock.picking</field>
+        <field name="inherit_id" ref="stock.view_picking_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='picking_type_id']" position="after">
+                <field name="adk_shop_id"/>
+            </xpath>
+        </field>
+    </record>
+    <record id="view_picking_internal_search_adk" model="ir.ui.view">
+        <field name="name">stock.picking.search.adk</field>
+        <field name="model">stock.picking</field>
+        <field name="inherit_id" ref="stock.view_picking_internal_search"/>
+        <field name="arch" type="xml">
+            <xpath expr="//search" position="inside">
+                <field name="adk_shop_id"/>
+                <filter string="Par boutique" name="adk_group_shop" context="{'group_by': 'adk_shop_id'}"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

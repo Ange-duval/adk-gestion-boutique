@@ -1,0 +1,198 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Catégories d'autres revenus -->
+    <record id="view_adk_income_category_list" model="ir.ui.view">
+        <field name="name">adk.income.category.list</field>
+        <field name="model">adk.income.category</field>
+        <field name="arch" type="xml">
+            <list editable="bottom">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="account_id"/>
+            </list>
+        </field>
+    </record>
+    <record id="action_adk_income_category" model="ir.actions.act_window">
+        <field name="name">Catégories d'autres revenus</field>
+        <field name="res_model">adk.income.category</field>
+        <field name="view_mode">list</field>
+    </record>
+
+    <!-- Autres revenus -->
+    <record id="view_adk_income_list" model="ir.ui.view">
+        <field name="name">adk.shop.income.list</field>
+        <field name="model">adk.shop.income</field>
+        <field name="arch" type="xml">
+            <list string="Autres revenus" decoration-muted="state == 'invoiced'">
+                <field name="name"/>
+                <field name="date"/>
+                <field name="shop_id"/>
+                <field name="category_id"/>
+                <field name="description"/>
+                <field name="amount" sum="Total"/>
+                <field name="currency_id" column_invisible="1"/>
+                <field name="state" widget="badge" decoration-info="state == 'draft'" decoration-success="state in ('confirmed', 'invoiced')"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_adk_income_form" model="ir.ui.view">
+        <field name="name">adk.shop.income.form</field>
+        <field name="model">adk.shop.income</field>
+        <field name="arch" type="xml">
+            <form string="Autre revenu">
+                <header>
+                    <button name="action_confirm" string="Confirmer" type="object" class="btn-primary" invisible="state != 'draft'"
+                            groups="adk_gestion_boutiques.group_adk_manager"/>
+                    <button name="action_create_invoice" string="Créer la facture client" type="object" class="btn-primary"
+                            invisible="state != 'confirmed' or move_id"/>
+                    <button name="action_reset_draft" string="Remettre en brouillon" type="object" invisible="state != 'confirmed'"
+                            groups="adk_gestion_boutiques.group_adk_manager"/>
+                    <field name="state" widget="statusbar"/>
+                </header>
+                <sheet>
+                    <div class="oe_title"><h1><field name="name"/></h1></div>
+                    <group>
+                        <group>
+                            <field name="shop_id" readonly="state != 'draft'"/>
+                            <field name="category_id" readonly="state != 'draft'"/>
+                            <field name="description" readonly="state != 'draft'"/>
+                            <field name="partner_id"/>
+                        </group>
+                        <group>
+                            <field name="date" readonly="state != 'draft'"/>
+                            <field name="amount" readonly="state != 'draft'"/>
+                            <field name="currency_id" invisible="1"/>
+                            <field name="user_id"/>
+                            <field name="confirmer_id"/>
+                        </group>
+                    </group>
+                    <group string="Facturation" invisible="not move_id">
+                        <field name="move_id"/>
+                        <field name="payment_state"/>
+                    </group>
+                    <notebook>
+                        <page string="Justificatifs" name="attachments">
+                            <field name="attachment_ids" widget="many2many_binary"/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_adk_income_search" model="ir.ui.view">
+        <field name="name">adk.shop.income.search</field>
+        <field name="model">adk.shop.income</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="description"/>
+                <field name="shop_id"/>
+                <field name="category_id"/>
+                <filter string="À confirmer" name="draft" domain="[('state', '=', 'draft')]"/>
+                <filter string="Confirmés non facturés" name="confirmed" domain="[('state', '=', 'confirmed')]"/>
+                <group expand="0" string="Regrouper par">
+                    <filter string="Boutique" name="g_shop" context="{'group_by': 'shop_id'}"/>
+                    <filter string="Catégorie" name="g_cat" context="{'group_by': 'category_id'}"/>
+                    <filter string="Mois" name="g_month" context="{'group_by': 'date:month'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_adk_income" model="ir.actions.act_window">
+        <field name="name">Autres revenus</field>
+        <field name="res_model">adk.shop.income</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Enregistrez un autre revenu</p>
+            <p>Commissions, locations, prestations, subventions… avec justificatifs, confirmation par le responsable et facture client native.</p>
+        </field>
+    </record>
+
+    <!-- Caisse -->
+    <record id="view_adk_cash_move_list" model="ir.ui.view">
+        <field name="name">adk.shop.cash.move.list</field>
+        <field name="model">adk.shop.cash.move</field>
+        <field name="arch" type="xml">
+            <list string="Mouvements de caisse" create="0" decoration-danger="difference != 0">
+                <field name="name"/>
+                <field name="date"/>
+                <field name="shop_id"/>
+                <field name="kind"/>
+                <field name="reason"/>
+                <field name="amount"/>
+                <field name="difference"/>
+                <field name="balance_after"/>
+                <field name="currency_id" column_invisible="1"/>
+                <field name="user_id" widget="many2one_avatar_user"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_adk_cash_move_form" model="ir.ui.view">
+        <field name="name">adk.shop.cash.move.form</field>
+        <field name="model">adk.shop.cash.move</field>
+        <field name="arch" type="xml">
+            <form string="Mouvement de caisse">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="shop_id" readonly="id"/>
+                            <field name="kind" widget="radio" readonly="id"/>
+                            <field name="amount" readonly="id"/>
+                            <field name="currency_id" invisible="1"/>
+                        </group>
+                        <group>
+                            <field name="reason" readonly="id" placeholder="Ex : fond de caisse, dépôt en banque, achat de fournitures…"/>
+                            <field name="reference" readonly="id"/>
+                            <field name="date"/>
+                            <field name="user_id"/>
+                        </group>
+                    </group>
+                    <group string="Contrôle" invisible="not id or kind != 'count'">
+                        <field name="expected"/>
+                        <field name="difference"/>
+                    </group>
+                    <group invisible="not id">
+                        <field name="balance_after"/>
+                    </group>
+                    <p class="text-muted" invisible="id">
+                        Comptage : saisissez le total des espèces réellement présentes dans le tiroir ; l'écart avec le solde attendu est enregistré et signalé.
+                        Un mouvement validé ne se modifie plus : passez un mouvement correctif.
+                    </p>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_adk_cash_move_search" model="ir.ui.view">
+        <field name="name">adk.shop.cash.move.search</field>
+        <field name="model">adk.shop.cash.move</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="reason"/>
+                <field name="shop_id"/>
+                <filter string="Écarts de caisse" name="gaps" domain="[('kind', '=', 'count'), ('difference', '!=', 0)]"/>
+                <group expand="0" string="Regrouper par">
+                    <filter string="Boutique" name="g_shop" context="{'group_by': 'shop_id'}"/>
+                    <filter string="Type" name="g_kind" context="{'group_by': 'kind'}"/>
+                    <filter string="Jour" name="g_day" context="{'group_by': 'date:day'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_adk_cash_move" model="ir.actions.act_window">
+        <field name="name">Mouvements de caisse</field>
+        <field name="res_model">adk.shop.cash.move</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Aucun mouvement de caisse</p>
+            <p>Depuis la fiche d'une boutique : fond de caisse, entrées, sorties et comptage de clôture avec détection des écarts.</p>
+        </field>
+    </record>
+</odoo>

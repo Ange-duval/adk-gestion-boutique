@@ -1,0 +1,169 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="adk_gestion_boutiques.Dashboard">
+        <div class="adk-dash">
+            <div class="adk-dash-inner" t-if="state.data">
+                <div class="adk-dash-head">
+                    <div>
+                        <h1>Tableau de bord du réseau</h1>
+                        <div class="adk-sub">
+                            <t t-esc="state.data.company"/> · du <t t-esc="fmtDate(state.data.date_from)"/> au <t t-esc="fmtDate(state.data.date_to)"/>
+                            · <t t-esc="state.data.shops.length"/> boutique(s) active(s)
+                        </div>
+                    </div>
+                    <div class="adk-actions">
+                        <div class="adk-pills">
+                            <t t-foreach="periods" t-as="p" t-key="p[0]">
+                                <button type="button" t-attf-class="adk-pill {{ state.period === p[0] ? 'active' : '' }}"
+                                        t-on-click="() => this.setPeriod(p[0])"><t t-esc="p[1]"/></button>
+                            </t>
+                        </div>
+                        <button type="button" class="adk-btn-ghost" t-on-click="openReports"><i class="fa fa-print"/> Rapports</button>
+                    </div>
+                </div>
+
+                <div t-if="!state.data.single_currency" class="adk-note">
+                    Les boutiques utilisent plusieurs devises : les totaux ne sont pas additionnés. Consultez chaque boutique.
+                </div>
+
+                <div class="adk-tiles">
+                    <t t-foreach="tiles" t-as="tile" t-key="tile.label">
+                        <div t-attf-class="adk-tile {{ tile.color }}">
+                            <div class="adk-tile-icon"><i t-attf-class="fa {{ tile.icon }}"/></div>
+                            <div class="adk-tile-body">
+                                <div class="adk-tile-label" t-esc="tile.label"/>
+                                <div class="adk-tile-value" t-esc="tile.value"/>
+                                <div class="adk-tile-sub" t-if="tile.delta !== undefined">
+                                    <t t-if="tile.delta === null">vs période précédente : —</t>
+                                    <t t-else="">
+                                        <span t-attf-class="{{ tile.delta >= 0 ? 'up' : 'down' }}">
+                                            <i t-attf-class="fa {{ tile.delta >= 0 ? 'fa-arrow-up' : 'fa-arrow-down' }}"/>
+                                            <t t-esc="Math.abs(tile.delta).toFixed(1).replace('.', ',')"/> %
+                                        </span> vs période précédente
+                                    </t>
+                                </div>
+                                <div class="adk-tile-sub down" t-elif="tile.sub" t-esc="tile.sub"/>
+                            </div>
+                        </div>
+                    </t>
+                </div>
+
+                <div class="adk-grid-2">
+                    <div class="adk-card">
+                        <h3>Évolution du chiffre d'affaires HT</h3>
+                        <svg class="adk-chart" t-attf-viewBox="0 0 {{ chart.W }} {{ chart.H }}" preserveAspectRatio="none">
+                            <defs>
+                                <linearGradient id="adkArea" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="0%" stop-color="#3B5BDB" stop-opacity="0.35"/>
+                                    <stop offset="100%" stop-color="#3B5BDB" stop-opacity="0.02"/>
+                                </linearGradient>
+                            </defs>
+                            <t t-foreach="chart.grid" t-as="g" t-key="g_index">
+                                <line x1="44" t-att-x2="chart.W - 8" t-att-y1="g.y" t-att-y2="g.y" class="adk-grid-line"/>
+                                <text x="0" t-att-y="g.y + 4" class="adk-axis" t-esc="g.label"/>
+                            </t>
+                            <path t-att-d="chart.area" fill="url(#adkArea)"/>
+                            <path t-att-d="chart.line" class="adk-line"/>
+                            <t t-foreach="chart.dots" t-as="dot" t-key="dot_index">
+                                <circle t-att-cx="dot.x" t-att-cy="dot.y" r="3.2" class="adk-dot"><title t-esc="dot.title"/></circle>
+                            </t>
+                            <t t-foreach="chart.labels" t-as="l" t-key="l_index">
+                                <text t-if="l.show" t-att-x="l.x" t-att-y="chart.H - 5" text-anchor="middle" class="adk-axis" t-esc="l.text"/>
+                            </t>
+                        </svg>
+                    </div>
+
+                    <div class="adk-card">
+                        <h3>Comparaison des boutiques</h3>
+                        <div class="adk-legend"><span class="rev"/> Chiffre d'affaires <span class="chg"/> Achats et charges</div>
+                        <t t-foreach="state.data.shops" t-as="shop" t-key="shop.id">
+                            <div class="adk-compare" t-on-click="() => this.openShop(shop.id)">
+                                <div class="adk-compare-name"><t t-esc="shop.code"/></div>
+                                <div class="adk-compare-bars">
+                                    <div class="adk-bar rev" t-attf-style="width: {{ shopBar(shop, 'revenue') }}%"/>
+                                    <div class="adk-bar chg" t-attf-style="width: {{ shopBar(shop, 'charges') }}%"/>
+                                </div>
+                                <div class="adk-compare-val">
+                                    <b t-esc="shopMoney(shop, shop.revenue)"/>
+                                    <span t-esc="shopMoney(shop, shop.charges + shop.goods_purchases)"/>
+                                </div>
+                            </div>
+                        </t>
+                    </div>
+                </div>
+
+                <div class="adk-grid-3">
+                    <div class="adk-card">
+                        <h3>Meilleures ventes</h3>
+                        <table class="adk-table" t-if="state.data.top_products.length">
+                            <t t-foreach="state.data.top_products" t-as="prod" t-key="prod_index">
+                                <tr>
+                                    <td><t t-esc="prod.name"/></td>
+                                    <td class="num"><t t-esc="Math.round(prod.qty)"/> u.</td>
+                                    <td class="num"><b t-esc="money(prod.amount)"/></td>
+                                </tr>
+                            </t>
+                        </table>
+                        <div class="adk-empty" t-else="">Aucune vente sur la période.</div>
+                    </div>
+                    <div class="adk-card">
+                        <h3>Dépenses par catégorie</h3>
+                        <t t-foreach="state.data.expenses" t-as="exp" t-key="exp_index">
+                            <div class="adk-hbar">
+                                <div class="adk-hbar-label"><t t-esc="exp.name"/><b t-esc="money(exp.amount)"/></div>
+                                <div class="adk-hbar-track"><div class="adk-hbar-fill" t-attf-style="width: {{ barPct(exp.amount, state.data.expenses) }}%"/></div>
+                            </div>
+                        </t>
+                        <div class="adk-empty" t-if="!state.data.expenses.length">Aucune dépense approuvée sur la période.</div>
+                    </div>
+                    <div class="adk-card">
+                        <h3>Alertes <a href="#" class="adk-more" t-on-click.prevent="openAlerts">Tout voir</a></h3>
+                        <t t-foreach="state.data.alerts" t-as="al" t-key="al.id">
+                            <div t-attf-class="adk-alert sev{{ al.severity }}">
+                                <span class="dot"/>
+                                <span class="txt"><t t-esc="al.name"/></span>
+                                <span class="shop" t-esc="al.shop"/>
+                            </div>
+                        </t>
+                        <div class="adk-empty" t-if="!state.data.alerts.length">Aucune alerte ouverte. Tout est sous contrôle.</div>
+                    </div>
+                </div>
+
+                <h2 class="adk-h2">Mes boutiques</h2>
+                <div class="adk-shops">
+                    <t t-foreach="state.data.shops" t-as="shop" t-key="shop.id">
+                        <div class="adk-shop">
+                            <div class="adk-shop-head" t-on-click="() => this.openShop(shop.id)">
+                                <img t-if="shop.has_image" class="adk-logo" t-attf-src="/web/image/adk.shop/{{ shop.id }}/image_128" alt=""/>
+                                <div t-else="" class="adk-logo ph"><t t-esc="initials(shop.name)"/></div>
+                                <div class="flex-grow-1">
+                                    <div class="adk-shop-name" t-esc="shop.name"/>
+                                    <div class="adk-shop-meta"><t t-esc="shop.code"/><t t-if="shop.group"> · <t t-esc="shop.group"/></t><t t-if="shop.manager"> · <t t-esc="shop.manager"/></t></div>
+                                </div>
+                                <span t-if="shop.alerts" class="adk-badge warn"><i class="fa fa-bell"/> <t t-esc="shop.alerts"/></span>
+                                <span t-if="shop.sale_mode !== 'simple' and shop.pos_open" class="adk-badge ok"><i class="fa fa-unlock"/> Caisse ouverte</span>
+                                <span t-if="shop.sale_mode !== 'simple' and !shop.pos_open" class="adk-badge off"><i class="fa fa-lock"/> Caisse fermée</span>
+                                <span t-if="shop.overdue_count" class="adk-badge bad"><i class="fa fa-exclamation-triangle"/> <t t-esc="shop.overdue_count"/></span>
+                            </div>
+                            <div class="adk-shop-kpis">
+                                <div><span>CA HT</span><b t-esc="shopMoney(shop, shop.revenue)"/></div>
+                                <div><span>Marge brute</span><b t-esc="shopMoney(shop, shop.margin)"/></div>
+                                <div><span>Résultat estimé</span><b t-attf-class="{{ shop.result &lt; 0 ? 'neg' : '' }}" t-esc="shopMoney(shop, shop.result)"/></div>
+                                <div><span>Stock</span><b t-esc="shopMoney(shop, shop.stock_value)"/></div>
+                                <div><span>Créances</span><b t-esc="shopMoney(shop, shop.receivable)"/></div>
+                                <div><span>Caisse</span><b t-esc="shopMoney(shop, shop.cash_balance)"/></div>
+                            </div>
+                            <div class="adk-shop-actions">
+                                <button type="button" class="adk-btn" t-on-click="() => this.openShop(shop.id)"><i class="fa fa-folder-open"/> Ouvrir</button>
+                                <button type="button" class="adk-btn-ghost" t-if="shop.sale_mode !== 'pos'" t-on-click="() => this.shopAction(shop.id, 'action_new_sale')"><i class="fa fa-file-text-o"/> Vente simple</button>
+                                <button type="button" class="adk-btn-ghost" t-if="shop.sale_mode !== 'simple' and shop.has_pos" t-on-click="() => this.shopAction(shop.id, 'action_open_pos')"><i class="fa fa-shopping-cart"/> Vente POS</button>
+                            </div>
+                        </div>
+                    </t>
+                    <div class="adk-empty" t-if="!state.data.shops.length">Aucune boutique active. Créez une boutique puis activez-la.</div>
+                </div>
+            </div>
+            <div class="adk-loading" t-else="">Chargement…</div>
+        </div>
+    </t>
+</templates>

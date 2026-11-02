@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="paperformat_adk_ticket" model="report.paperformat">
+        <field name="name">ADK Ticket 80 mm</field>
+        <field name="default" eval="False"/>
+        <field name="format">custom</field>
+        <field name="page_height">200</field>
+        <field name="page_width">80</field>
+        <field name="orientation">Portrait</field>
+        <field name="margin_top">4</field>
+        <field name="margin_bottom">4</field>
+        <field name="margin_left">4</field>
+        <field name="margin_right">4</field>
+        <field name="header_spacing">0</field>
+        <field name="dpi">90</field>
+    </record>
+
+    <record id="action_report_adk_session" model="ir.actions.report">
+        <field name="name">Ticket Z de la journée</field>
+        <field name="model">adk.shop.session</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">adk_gestion_boutiques.report_adk_session</field>
+        <field name="report_file">adk_gestion_boutiques.report_adk_session</field>
+        <field name="print_report_name">'Ticket_Z_%s' % object.name.replace('/', '_')</field>
+        <field name="binding_model_id" ref="model_adk_shop_session"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <record id="action_report_adk_ticket" model="ir.actions.report">
+        <field name="name">Ticket de caisse</field>
+        <field name="model">sale.order</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">adk_gestion_boutiques.report_adk_ticket</field>
+        <field name="report_file">adk_gestion_boutiques.report_adk_ticket</field>
+        <field name="print_report_name">'Ticket_%s' % object.name</field>
+        <field name="paperformat_id" ref="paperformat_adk_ticket"/>
+    </record>
+
+    <template id="report_adk_session">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="o">
+                <t t-call="web.external_layout">
+                    <div class="page" style="font-size:13px;">
+                        <h2 style="margin-bottom:2px;">Ticket Z — clôture de journée</h2>
+                        <div style="color:#6b7280;margin-bottom:14px;">
+                            <b t-esc="o.shop_id.name"/> · <span t-esc="o.name"/> ·
+                            Ouverte le <span t-field="o.date_open"/> par <span t-esc="o.user_id.name"/>
+                            <t t-if="o.date_close"> · Clôturée le <span t-field="o.date_close"/> par <span t-esc="o.close_user_id.name"/></t>
+                        </div>
+
+                        <table class="table table-sm" style="margin-bottom:18px;">
+                            <thead><tr style="background-color:#1F3A8A;"><th colspan="2" style="color:#fff;">Résumé des ventes</th></tr></thead>
+                            <tbody>
+                                <tr><td>Nombre de ventes</td><td class="text-end"><span t-esc="o.sales_count"/></td></tr>
+                                <tr><td>Total HT</td><td class="text-end"><span t-field="o.sales_untaxed"/></td></tr>
+                                <tr><td>Taxes</td><td class="text-end"><span t-esc="o.currency_id.format(o.sales_total - o.sales_untaxed)"/></td></tr>
+                                <tr><td><b>Total TTC</b></td><td class="text-end"><b t-field="o.sales_total"/></td></tr>
+                            </tbody>
+                        </table>
+
+                        <table class="table table-sm" style="margin-bottom:18px;">
+                            <thead><tr style="background-color:#1F3A8A;"><th style="color:#fff;">Mode de paiement</th><th class="text-end" style="color:#fff;">Ventes</th><th class="text-end" style="color:#fff;">Montant</th></tr></thead>
+                            <tbody>
+                                <t t-foreach="o._report_payment_lines()" t-as="l">
+                                    <tr><td><span t-esc="l[0]"/></td><td class="text-end"><span t-esc="l[1]"/></td><td class="text-end"><span t-esc="o.currency_id.format(l[2])"/></td></tr>
+                                </t>
+                            </tbody>
+                        </table>
+
+                        <table class="table table-sm" style="margin-bottom:18px;">
+                            <thead><tr style="background-color:#1F3A8A;"><th colspan="2" style="color:#fff;">Caisse espèces</th></tr></thead>
+                            <tbody>
+                                <tr><td>Fond de caisse compté à l'ouverture</td><td class="text-end"><span t-field="o.opening_cash"/></td></tr>
+                                <tr><td>Écart constaté à l'ouverture</td><td class="text-end"><span t-field="o.opening_difference"/></td></tr>
+                                <tr><td>Ventes encaissées en espèces</td><td class="text-end"><span t-field="o.cash_sales"/></td></tr>
+                                <tr><td>Espèces attendues à la clôture</td><td class="text-end"><span t-field="o.closing_expected"/></td></tr>
+                                <tr><td>Espèces comptées</td><td class="text-end"><span t-field="o.closing_cash"/></td></tr>
+                                <tr><td><b>Écart de caisse</b></td><td class="text-end"><b t-field="o.closing_difference"/></td></tr>
+                            </tbody>
+                        </table>
+
+                        <table class="table table-sm" style="margin-bottom:18px;">
+                            <thead><tr style="background-color:#1F3A8A;"><th style="color:#fff;">Article vendu</th><th class="text-end" style="color:#fff;">Qté</th><th class="text-end" style="color:#fff;">Total TTC</th></tr></thead>
+                            <tbody>
+                                <t t-foreach="o._report_product_lines()" t-as="l">
+                                    <tr><td><span t-esc="l[0]"/></td><td class="text-end"><span t-esc="'%g' % l[1]"/></td><td class="text-end"><span t-esc="o.currency_id.format(l[2])"/></td></tr>
+                                </t>
+                            </tbody>
+                        </table>
+                        <p t-if="o.note"><b>Remarques :</b> <span t-esc="o.note"/></p>
+                        <div style="margin-top:36px;display:flex;justify-content:space-between;">
+                            <div>Le caissier : ______________________</div><div>Le responsable : ______________________</div>
+                        </div>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+
+    <template id="report_adk_ticket">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="o">
+                <t t-call="web.basic_layout">
+                    <div class="page" style="font-size:11px;font-family:monospace;">
+                        <div style="text-align:center;"><b style="font-size:14px;" t-esc="o.adk_shop_id.name or o.company_id.name"/></div>
+                        <div style="text-align:center;"><span t-esc="o.name"/> · <span t-field="o.date_order" t-options="{'widget': 'datetime'}"/></div>
+                        <hr/>
+                        <table style="width:100%;">
+                            <t t-foreach="o.order_line" t-as="l">
+                                <tr><td colspan="2"><span t-esc="l.product_id.display_name"/></td></tr>
+                                <tr><td><span t-esc="'%g' % l.product_uom_qty"/> × <span t-esc="o.currency_id.format(l.price_unit)"/></td><td style="text-align:right;"><span t-esc="o.currency_id.format(l.price_total)"/></td></tr>
+                            </t>
+                        </table>
+                        <hr/>
+                        <table style="width:100%;font-size:13px;">
+                            <tr><td><b>TOTAL</b></td><td style="text-align:right;"><b t-esc="o.currency_id.format(o.amount_total)"/></td></tr>
+                            <tr><td>Payé par</td><td style="text-align:right;"><span t-esc="o.adk_shop_pay_journal_id.name"/></td></tr>
+                        </table>
+                        <div style="text-align:center;margin-top:10px;">Merci de votre visite !</div>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+</odoo>

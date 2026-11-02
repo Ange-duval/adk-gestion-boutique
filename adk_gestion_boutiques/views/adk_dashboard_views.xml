@@ -1,0 +1,157 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_adk_shop_dashboard_kanban" model="ir.ui.view">
+        <field name="name">adk.shop.dashboard.kanban</field>
+        <field name="model">adk.shop</field>
+        <field name="priority">30</field>
+        <field name="arch" type="xml">
+            <kanban class="o_kanban_dashboard adk-kanban">
+                <field name="currency_id"/>
+                <field name="state"/>
+                <field name="sale_mode"/>
+                <field name="has_pos"/>
+                <field name="pos_open"/>
+                <field name="image_128"/>
+                <templates>
+                    <t t-name="card">
+                        <div class="adk-shop">
+                            <div class="adk-shop-head">
+                                <field name="image_128" widget="image" class="adk-logo"/>
+                                <div class="flex-grow-1">
+                                    <div class="adk-shop-name"><field name="name"/></div>
+                                    <div class="adk-shop-meta"><field name="code"/> · <field name="group_id"/></div>
+                                </div>
+                                <span t-if="record.alert_count.raw_value > 0" class="adk-badge warn"><i class="fa fa-bell" title="Alertes"/> <field name="alert_count"/></span>
+                                <span t-if="record.kpi_overdue_count.raw_value > 0" class="adk-badge bad"><i class="fa fa-exclamation-triangle" title="Retards"/> <field name="kpi_overdue_count"/></span>
+                                <span t-if="record.sale_mode.raw_value != 'simple' and record.pos_open.raw_value" class="adk-badge ok"><i class="fa fa-unlock" title="Caisse ouverte"/> Caisse ouverte</span>
+                                <span t-if="record.sale_mode.raw_value != 'simple' and !record.pos_open.raw_value and record.state.raw_value == 'active'" class="adk-badge off"><i class="fa fa-lock" title="Caisse fermée"/> Caisse fermée</span>
+                            </div>
+                            <div class="adk-shop-kpis">
+                                <div><span>CA du mois HT</span><b><field name="kpi_revenue"/></b></div>
+                                <div><span>Marge brute</span><b><field name="kpi_margin"/></b></div>
+                                <div><span>Résultat estimé</span><b><field name="kpi_result"/></b></div>
+                                <div><span>Stock</span><b><field name="kpi_stock_value"/></b></div>
+                                <div><span>Créances</span><b><field name="kpi_receivable"/></b></div>
+                                <div><span>Caisse</span><b><field name="cash_balance"/></b></div>
+                            </div>
+                            <div class="adk-shop-actions" t-if="record.state.raw_value == 'active'">
+                                <button name="action_view_shop" type="object" class="adk-btn"><i class="fa fa-folder-open"/> Ouvrir</button>
+                                <button name="action_new_sale" type="object" class="adk-btn-ghost" t-if="record.sale_mode.raw_value != 'pos'"><i class="fa fa-file-text-o"/> Vente simple</button>
+                                <button name="action_open_pos" type="object" class="adk-btn-ghost" t-if="record.sale_mode.raw_value != 'simple' and record.has_pos.raw_value"><i class="fa fa-shopping-cart"/> Vente POS</button>
+                            </div>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <record id="action_adk_dashboard_client" model="ir.actions.client">
+        <field name="name">Tableau de bord</field>
+        <field name="tag">adk_dashboard</field>
+    </record>
+
+    <record id="action_adk_dashboard" model="ir.actions.act_window">
+        <field name="name">Boutiques (vue cartes)</field>
+        <field name="res_model">adk.shop</field>
+        <field name="view_mode">kanban,list,form</field>
+        <field name="domain">[('state', '=', 'active')]</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Aucune boutique active</p>
+            <p>Créez une boutique puis activez-la pour voir ses indicateurs du mois, calculés depuis vos documents réels.</p>
+        </field>
+    </record>
+    <record id="action_adk_dashboard_kanban" model="ir.actions.act_window.view">
+        <field name="sequence">1</field>
+        <field name="view_mode">kanban</field>
+        <field name="view_id" ref="view_adk_shop_dashboard_kanban"/>
+        <field name="act_window_id" ref="action_adk_dashboard"/>
+    </record>
+
+    <!-- Analyse des factures (ventes / achats) par boutique -->
+    <record id="view_adk_move_graph" model="ir.ui.view">
+        <field name="name">account.move.graph.adk</field>
+        <field name="model">account.move</field>
+        <field name="arch" type="xml">
+            <graph string="Par boutique" type="bar">
+                <field name="adk_shop_id"/>
+                <field name="amount_untaxed_signed" type="measure"/>
+            </graph>
+        </field>
+    </record>
+    <record id="view_adk_move_pivot" model="ir.ui.view">
+        <field name="name">account.move.pivot.adk</field>
+        <field name="model">account.move</field>
+        <field name="arch" type="xml">
+            <pivot string="Par boutique">
+                <field name="adk_shop_id" type="row"/>
+                <field name="invoice_date" interval="month" type="col"/>
+                <field name="amount_untaxed_signed" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="action_adk_sales_analysis" model="ir.actions.act_window">
+        <field name="name">Analyse des ventes par boutique</field>
+        <field name="res_model">account.move</field>
+        <field name="view_mode">graph,pivot,list,form</field>
+        <field name="domain">[('move_type', 'in', ('out_invoice', 'out_refund')), ('state', '=', 'posted'), ('adk_shop_id', '!=', False)]</field>
+        <field name="context">{'default_move_type': 'out_invoice'}</field>
+    </record>
+    <record id="action_adk_sales_analysis_graph" model="ir.actions.act_window.view">
+        <field name="sequence">1</field><field name="view_mode">graph</field>
+        <field name="view_id" ref="view_adk_move_graph"/><field name="act_window_id" ref="action_adk_sales_analysis"/>
+    </record>
+    <record id="action_adk_sales_analysis_pivot" model="ir.actions.act_window.view">
+        <field name="sequence">2</field><field name="view_mode">pivot</field>
+        <field name="view_id" ref="view_adk_move_pivot"/><field name="act_window_id" ref="action_adk_sales_analysis"/>
+    </record>
+
+    <record id="action_adk_charges_analysis" model="ir.actions.act_window">
+        <field name="name">Analyse des achats par boutique</field>
+        <field name="res_model">account.move</field>
+        <field name="view_mode">graph,pivot,list,form</field>
+        <field name="domain">[('move_type', 'in', ('in_invoice', 'in_refund')), ('state', '=', 'posted'), ('adk_shop_id', '!=', False)]</field>
+        <field name="context">{'default_move_type': 'in_invoice'}</field>
+    </record>
+    <record id="action_adk_charges_analysis_graph" model="ir.actions.act_window.view">
+        <field name="sequence">1</field><field name="view_mode">graph</field>
+        <field name="view_id" ref="view_adk_move_graph"/><field name="act_window_id" ref="action_adk_charges_analysis"/>
+    </record>
+    <record id="action_adk_charges_analysis_pivot" model="ir.actions.act_window.view">
+        <field name="sequence">2</field><field name="view_mode">pivot</field>
+        <field name="view_id" ref="view_adk_move_pivot"/><field name="act_window_id" ref="action_adk_charges_analysis"/>
+    </record>
+
+    <!-- Mouvements de stock par boutique -->
+    <record id="view_adk_stock_move_pivot" model="ir.ui.view">
+        <field name="name">stock.move.pivot.adk</field>
+        <field name="model">stock.move</field>
+        <field name="arch" type="xml">
+            <pivot string="Mouvements par boutique">
+                <field name="adk_shop_id" type="row"/>
+                <field name="product_id" type="row"/>
+                <field name="date" interval="month" type="col"/>
+                <field name="quantity" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+    <record id="action_adk_stock_moves" model="ir.actions.act_window">
+        <field name="name">Mouvements de stock par boutique</field>
+        <field name="res_model">stock.move</field>
+        <field name="view_mode">pivot,list,form</field>
+        <field name="domain">[('state', '=', 'done'), ('adk_shop_id', '!=', False)]</field>
+    </record>
+    <record id="action_adk_stock_moves_pivot" model="ir.actions.act_window.view">
+        <field name="sequence">1</field><field name="view_mode">pivot</field>
+        <field name="view_id" ref="view_adk_stock_move_pivot"/><field name="act_window_id" ref="action_adk_stock_moves"/>
+    </record>
+
+    <record id="action_adk_stock_quants" model="ir.actions.act_window">
+        <field name="name">Stock par boutique</field>
+        <field name="res_model">stock.quant</field>
+        <field name="view_mode">list</field>
+        <field name="domain">[('location_id.usage', '=', 'internal')]</field>
+        <field name="context">{'group_by': ['location_id']}</field>
+    </record>
+</odoo>

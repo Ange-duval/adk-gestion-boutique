@@ -1,0 +1,218 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_adk_expense_category_list" model="ir.ui.view">
+        <field name="name">adk.expense.category.list</field>
+        <field name="model">adk.expense.category</field>
+        <field name="arch" type="xml">
+            <list editable="bottom">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="account_id"/>
+            </list>
+        </field>
+    </record>
+    <record id="action_adk_expense_category" model="ir.actions.act_window">
+        <field name="name">Catégories de dépenses</field>
+        <field name="res_model">adk.expense.category</field>
+        <field name="view_mode">list</field>
+    </record>
+
+    <record id="view_adk_expense_list" model="ir.ui.view">
+        <field name="name">adk.shop.expense.list</field>
+        <field name="model">adk.shop.expense</field>
+        <field name="arch" type="xml">
+            <list string="Dépenses" decoration-danger="state == 'rejected'" decoration-muted="state == 'billed'">
+                <field name="name"/>
+                <field name="date"/>
+                <field name="shop_id"/>
+                <field name="category_id"/>
+                <field name="description"/>
+                <field name="amount" sum="Total"/>
+                <field name="currency_id" column_invisible="1"/>
+                <field name="state" widget="badge" decoration-info="state == 'submitted'" decoration-success="state in ('approved', 'billed')"
+                       decoration-danger="state == 'rejected'"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_adk_expense_form" model="ir.ui.view">
+        <field name="name">adk.shop.expense.form</field>
+        <field name="model">adk.shop.expense</field>
+        <field name="arch" type="xml">
+            <form string="Dépense">
+                <header>
+                    <button name="action_submit" string="Soumettre" type="object" class="btn-primary" invisible="state != 'draft'"/>
+                    <button name="action_approve" string="Approuver" type="object" class="btn-primary" invisible="state != 'submitted'"
+                            groups="adk_gestion_boutiques.group_adk_manager"/>
+                    <button name="action_reject" string="Refuser" type="object" invisible="state != 'submitted'"
+                            groups="adk_gestion_boutiques.group_adk_manager"/>
+                    <button name="action_create_bill" string="Créer la facture fournisseur" type="object" class="btn-primary"
+                            invisible="state != 'approved' or move_id"/>
+                    <button name="action_reset_draft" string="Remettre en brouillon" type="object" invisible="state != 'rejected'"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,submitted,approved,billed"/>
+                </header>
+                <sheet>
+                    <div class="oe_title"><h1><field name="name"/></h1></div>
+                    <group>
+                        <group>
+                            <field name="shop_id" readonly="state != 'draft'"/>
+                            <field name="category_id" readonly="state not in ('draft', 'rejected')"/>
+                            <field name="description" readonly="state not in ('draft', 'rejected')"/>
+                            <field name="partner_id"/>
+                        </group>
+                        <group>
+                            <field name="date" readonly="state not in ('draft', 'rejected')"/>
+                            <field name="amount" readonly="state not in ('draft', 'rejected')"/>
+                            <field name="currency_id" invisible="1"/>
+                            <field name="user_id"/>
+                            <field name="approver_id"/>
+                        </group>
+                    </group>
+                    <group invisible="state not in ('submitted', 'rejected')">
+                        <field name="reject_reason" placeholder="À renseigner pour refuser la dépense"/>
+                    </group>
+                    <group string="Facturation" invisible="not move_id">
+                        <field name="move_id"/>
+                        <field name="payment_state"/>
+                    </group>
+                    <notebook>
+                        <page string="Justificatifs" name="attachments">
+                            <field name="attachment_ids" widget="many2many_binary"/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_adk_expense_search" model="ir.ui.view">
+        <field name="name">adk.shop.expense.search</field>
+        <field name="model">adk.shop.expense</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="description"/>
+                <field name="shop_id"/>
+                <field name="category_id"/>
+                <filter string="À approuver" name="to_approve" domain="[('state', '=', 'submitted')]"/>
+                <filter string="Approuvées" name="approved" domain="[('state', '=', 'approved')]"/>
+                <filter string="Mes demandes" name="mine" domain="[('user_id', '=', uid)]"/>
+                <group expand="0" string="Regrouper par">
+                    <filter string="Boutique" name="g_shop" context="{'group_by': 'shop_id'}"/>
+                    <filter string="Catégorie" name="g_cat" context="{'group_by': 'category_id'}"/>
+                    <filter string="Mois" name="g_month" context="{'group_by': 'date:month'}"/>
+                    <filter string="État" name="g_state" context="{'group_by': 'state'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="view_adk_expense_pivot" model="ir.ui.view">
+        <field name="name">adk.shop.expense.pivot</field>
+        <field name="model">adk.shop.expense</field>
+        <field name="arch" type="xml">
+            <pivot string="Dépenses par boutique">
+                <field name="shop_id" type="row"/>
+                <field name="category_id" type="row"/>
+                <field name="date" interval="month" type="col"/>
+                <field name="amount" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="view_adk_expense_graph" model="ir.ui.view">
+        <field name="name">adk.shop.expense.graph</field>
+        <field name="model">adk.shop.expense</field>
+        <field name="arch" type="xml">
+            <graph string="Dépenses par catégorie" type="bar">
+                <field name="category_id"/>
+                <field name="amount" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+    <record id="action_adk_expense" model="ir.actions.act_window">
+        <field name="name">Dépenses</field>
+        <field name="res_model">adk.shop.expense</field>
+        <field name="view_mode">list,form,pivot,graph</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Enregistrez votre première dépense</p>
+            <p>Loyer, électricité, transport, fournitures… Chaque dépense suit un circuit d'approbation avec justificatifs, puis peut générer la facture fournisseur native.</p>
+        </field>
+    </record>
+
+    <!-- Budgets -->
+    <record id="view_adk_budget_list" model="ir.ui.view">
+        <field name="name">adk.shop.budget.list</field>
+        <field name="model">adk.shop.budget</field>
+        <field name="arch" type="xml">
+            <list string="Budgets">
+                <field name="name"/>
+                <field name="shop_id"/>
+                <field name="date_from"/>
+                <field name="date_to"/>
+                <field name="total_planned"/>
+                <field name="total_spent"/>
+                <field name="currency_id" column_invisible="1"/>
+                <field name="percent" widget="progressbar"/>
+                <field name="state" widget="badge"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_adk_budget_form" model="ir.ui.view">
+        <field name="name">adk.shop.budget.form</field>
+        <field name="model">adk.shop.budget</field>
+        <field name="arch" type="xml">
+            <form string="Budget">
+                <header>
+                    <button name="action_confirm" string="Lancer le budget" type="object" class="btn-primary" invisible="state != 'draft'"/>
+                    <button name="action_close" string="Clôturer" type="object" invisible="state != 'confirmed'"/>
+                    <button name="action_draft" string="Remettre en brouillon" type="object" invisible="state == 'draft'"/>
+                    <field name="state" widget="statusbar"/>
+                </header>
+                <sheet>
+                    <div class="oe_title"><h1><field name="name" placeholder="Ex : Budget novembre 2026 — BEN Douala"/></h1></div>
+                    <group>
+                        <group>
+                            <field name="shop_id" readonly="state != 'draft'"/>
+                            <field name="alert_percent"/>
+                        </group>
+                        <group>
+                            <field name="date_from" readonly="state != 'draft'"/>
+                            <field name="date_to" readonly="state != 'draft'"/>
+                            <field name="currency_id" invisible="1"/>
+                        </group>
+                    </group>
+                    <group class="w-50">
+                        <field name="total_planned"/>
+                        <field name="total_spent"/>
+                        <field name="percent" widget="progressbar"/>
+                    </group>
+                    <field name="line_ids" readonly="state == 'closed'">
+                        <list editable="bottom">
+                            <field name="category_id"/>
+                            <field name="planned_amount"/>
+                            <field name="spent_amount"/>
+                            <field name="remaining_amount"/>
+                            <field name="percent" widget="progressbar"/>
+                            <field name="currency_id" column_invisible="1"/>
+                        </list>
+                    </field>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_adk_budget" model="ir.actions.act_window">
+        <field name="name">Budgets</field>
+        <field name="res_model">adk.shop.budget</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Créez un budget par boutique et par période</p>
+            <p>Comparez le prévu au réalisé par catégorie et soyez alerté avant le dépassement.</p>
+        </field>
+    </record>
+</odoo>

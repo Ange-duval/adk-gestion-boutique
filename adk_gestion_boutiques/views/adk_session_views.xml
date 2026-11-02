@@ -1,0 +1,239 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ======================= Journées de caisse ======================= -->
+    <record id="view_adk_session_list" model="ir.ui.view">
+        <field name="name">adk.shop.session.list</field>
+        <field name="model">adk.shop.session</field>
+        <field name="arch" type="xml">
+            <list string="Journées de caisse" decoration-success="state == 'open'" decoration-muted="state == 'closed'">
+                <field name="name"/>
+                <field name="shop_id"/>
+                <field name="user_id" widget="many2one_avatar_user"/>
+                <field name="date_open"/>
+                <field name="date_close" optional="show"/>
+                <field name="sales_count" string="Ventes"/>
+                <field name="sales_total" sum="Total"/>
+                <field name="closing_difference" optional="show" decoration-danger="closing_difference != 0"/>
+                <field name="currency_id" column_invisible="1"/>
+                <field name="state" widget="badge" decoration-success="state == 'open'" decoration-info="state == 'closed'"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_adk_session_form" model="ir.ui.view">
+        <field name="name">adk.shop.session.form</field>
+        <field name="model">adk.shop.session</field>
+        <field name="arch" type="xml">
+            <form string="Journée de caisse" create="0">
+                <header>
+                    <button name="action_pos_sale" string="Vente POS" type="object" class="btn-primary" invisible="state != 'open'"/>
+                    <button name="action_close_wizard" string="Clôturer la journée" type="object" invisible="state != 'open'"/>
+                    <button name="action_print_z" string="Ticket Z (PDF)" type="object"/>
+                    <field name="state" widget="statusbar" statusbar_visible="open,closed"/>
+                </header>
+                <sheet>
+                    <field name="currency_id" invisible="1"/>
+                    <div class="oe_title">
+                        <label for="name"/>
+                        <h1><field name="name"/></h1>
+                        <h3><field name="shop_id"/></h3>
+                    </div>
+                    <div class="adk-kpis">
+                        <div class="adk-kpi res"><div class="adk-kpi-label">Ventes</div><field name="sales_count"/></div>
+                        <div class="adk-kpi rev"><div class="adk-kpi-label">Total des ventes TTC</div><field name="sales_total"/></div>
+                        <div class="adk-kpi rev"><div class="adk-kpi-label">Dont espèces</div><field name="cash_sales"/></div>
+                        <div class="adk-kpi res"><div class="adk-kpi-label">Dont autres modes</div><field name="other_sales"/></div>
+                        <div class="adk-kpi chg" invisible="state != 'open'"><div class="adk-kpi-label">Espèces en caisse maintenant</div><field name="live_cash"/></div>
+                        <div class="adk-kpi chg" invisible="state != 'closed'"><div class="adk-kpi-label">Écart de caisse</div><field name="closing_difference"/></div>
+                    </div>
+                    <group>
+                        <group string="Ouverture">
+                            <field name="user_id"/>
+                            <field name="date_open"/>
+                            <field name="opening_cash"/>
+                            <field name="opening_expected"/>
+                            <field name="opening_difference"/>
+                        </group>
+                        <group string="Clôture">
+                            <field name="close_user_id"/>
+                            <field name="date_close"/>
+                            <field name="closing_expected"/>
+                            <field name="closing_cash"/>
+                            <field name="closing_difference"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Ventes" name="orders">
+                            <field name="order_ids" readonly="1">
+                                <list>
+                                    <field name="name"/>
+                                    <field name="date_order"/>
+                                    <field name="partner_id"/>
+                                    <field name="adk_shop_pay_journal_id"/>
+                                    <field name="amount_total" sum="Total"/>
+                                    <field name="currency_id" column_invisible="1"/>
+                                    <field name="state" widget="badge"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Mouvements de caisse" name="cash">
+                            <field name="cash_move_ids" readonly="1">
+                                <list>
+                                    <field name="name"/>
+                                    <field name="date"/>
+                                    <field name="kind"/>
+                                    <field name="reason"/>
+                                    <field name="amount"/>
+                                    <field name="difference"/>
+                                    <field name="balance_after"/>
+                                    <field name="currency_id" column_invisible="1"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Remarques" name="note">
+                            <field name="note" placeholder="Remarques de la journée…"/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_adk_session_search" model="ir.ui.view">
+        <field name="name">adk.shop.session.search</field>
+        <field name="model">adk.shop.session</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="shop_id"/>
+                <field name="user_id"/>
+                <filter string="Caisses ouvertes" name="open" domain="[('state', '=', 'open')]"/>
+                <filter string="Journées clôturées" name="closed" domain="[('state', '=', 'closed')]"/>
+                <filter string="Avec écart de caisse" name="diff" domain="[('closing_difference', '!=', 0)]"/>
+                <group expand="0" string="Regrouper par">
+                    <filter string="Boutique" name="g_shop" context="{'group_by': 'shop_id'}"/>
+                    <filter string="Jour" name="g_day" context="{'group_by': 'date_open:day'}"/>
+                    <filter string="Caissier" name="g_user" context="{'group_by': 'user_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_adk_session" model="ir.actions.act_window">
+        <field name="name">Journées de caisse</field>
+        <field name="res_model">adk.shop.session</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Aucune journée de caisse</p>
+            <p>Depuis une boutique, cliquez sur « Vente POS » : la caisse s'ouvre avec le fond de caisse compté, puis vous vendez et clôturez le soir.</p>
+        </field>
+    </record>
+
+    <!-- ======================= Ouverture ======================= -->
+    <record id="view_adk_session_open_form" model="ir.ui.view">
+        <field name="name">adk.shop.session.open.form</field>
+        <field name="model">adk.shop.session.open</field>
+        <field name="arch" type="xml">
+            <form string="Ouvrir la caisse">
+                <field name="currency_id" invisible="1"/>
+                <div class="alert alert-info" role="alert">
+                    <b>Bonjour !</b> Comptez les espèces du tiroir-caisse et saisissez le montant : c'est votre fond de caisse du jour.
+                </div>
+                <group>
+                    <group>
+                        <field name="shop_id"/>
+                        <field name="last_balance"/>
+                    </group>
+                    <group>
+                        <field name="opening_cash" widget="monetary"/>
+                        <field name="difference" decoration-danger="difference != 0"/>
+                    </group>
+                </group>
+                <field name="note" placeholder="Remarque éventuelle (ex. : monnaie ajoutée)"/>
+                <footer>
+                    <button name="action_open" string="Ouvrir la journée" type="object" class="btn-primary" data-hotkey="q"/>
+                    <button string="Annuler" special="cancel" data-hotkey="x"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- ======================= Clôture ======================= -->
+    <record id="view_adk_session_close_form" model="ir.ui.view">
+        <field name="name">adk.shop.session.close.form</field>
+        <field name="model">adk.shop.session.close</field>
+        <field name="arch" type="xml">
+            <form string="Clôturer la journée">
+                <field name="currency_id" invisible="1"/>
+                <div class="alert alert-warning" role="alert">
+                    Comptez les espèces du tiroir-caisse. L'écart avec le montant attendu sera enregistré et signalé.
+                </div>
+                <group>
+                    <group string="Résumé de la journée">
+                        <field name="session_id"/>
+                        <field name="sales_count"/>
+                        <field name="sales_total"/>
+                        <field name="cash_sales"/>
+                        <field name="other_sales"/>
+                    </group>
+                    <group string="Comptage de caisse">
+                        <field name="expected_cash"/>
+                        <field name="counted_cash" widget="monetary"/>
+                        <field name="difference" decoration-danger="difference != 0" decoration-success="difference == 0"/>
+                    </group>
+                </group>
+                <field name="note" placeholder="Remarque de clôture (ex. : explication d'un écart)"/>
+                <footer>
+                    <button name="action_close" string="Clôturer la journée" type="object" class="btn-primary" data-hotkey="q"/>
+                    <button name="action_close_print" string="Clôturer + ticket Z" type="object" class="btn-secondary"/>
+                    <button string="Annuler" special="cancel" data-hotkey="x"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- ======================= Vente POS ======================= -->
+    <record id="view_adk_shop_possale_form" model="ir.ui.view">
+        <field name="name">adk.shop.pos.sale.form</field>
+        <field name="model">adk.shop.pos.sale</field>
+        <field name="arch" type="xml">
+            <form string="Vente POS">
+                <field name="currency_id" invisible="1"/>
+                <field name="company_id" invisible="1"/>
+                <field name="journal_type" invisible="1"/>
+                <group>
+                    <group>
+                        <field name="shop_id"/>
+                        <field name="session_id"/>
+                    </group>
+                    <group>
+                        <field name="partner_id" placeholder="Client de passage" options="{'no_create': True}"/>
+                        <field name="journal_id" options="{'no_create': True}"/>
+                    </group>
+                </group>
+                <field name="line_ids" nolabel="1">
+                    <list editable="bottom">
+                        <field name="currency_id" column_invisible="1"/>
+                        <field name="product_id" options="{'no_create': True}"/>
+                        <field name="qty"/>
+                        <field name="price_unit"/>
+                        <field name="discount" optional="show"/>
+                        <field name="subtotal" sum="Total"/>
+                    </list>
+                </field>
+                <group class="oe_subtotal_footer">
+                    <field name="amount_total" class="oe_subtotal_footer_separator"/>
+                    <field name="amount_tendered" invisible="journal_type != 'cash'"/>
+                    <field name="change_due" invisible="journal_type != 'cash'"/>
+                </group>
+                <footer>
+                    <button name="action_validate" string="Encaisser" type="object" class="btn-primary" data-hotkey="q"/>
+                    <button name="action_validate_ticket" string="Encaisser + ticket" type="object" class="btn-secondary"/>
+                    <button name="action_close_day" string="Clôturer la journée" type="object" class="btn-secondary"/>
+                    <button string="Fermer" special="cancel" data-hotkey="x"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>
